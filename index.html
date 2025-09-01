@@ -1,0 +1,766 @@
+Here you go — a single, self-contained HTML file (with inline CSS & JS) that lets students *see* and *play with* Row Echelon Form step-by-step. It includes: labeled pivots, a staircase guide, an operation log, manual row-operation controls (swap / scale / add multiple), and an auto “Next Step” button that performs Gaussian elimination one action at a time (with partial pivoting). There are presets, randomize, reset, and a live “Is Echelon?” checker.
+
+Just copy everything below into a file like `echelon-lab.html` and open it in your browser.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Echelon Form Interactive Lab</title>
+<style>
+  :root{
+    --bg:#0f1220;
+    --panel:#171a2b;
+    --ink:#e9ebff;
+    --muted:#b9bfe5;
+    --accent:#7cd3ff;
+    --accent-2:#9effa7;
+    --warn:#ffcf75;
+    --danger:#ff7b9c;
+    --ok:#45df9a;
+    --grid:#23263a;
+    --pivot:#23d18b;
+    --zero:#67a7ff;
+    --focus:#e4ff80;
+  }
+  html,body{height:100%;}
+  body{
+    margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji"; 
+    color:var(--ink); background: radial-gradient(1200px 600px at 15% -10%, #1a1f39 0%, #0f1220 60%) fixed;
+  }
+  header{
+    padding:24px 16px 8px; max-width:1100px; margin:0 auto;
+  }
+  h1{margin:0 0 8px; font-size:clamp(22px, 3.2vw, 34px); letter-spacing:.2px;}
+  .sub{color:var(--muted); max-width:900px; line-height:1.4}
+  main{max-width:1100px; margin:16px auto 48px; padding:0 16px; display:grid; gap:16px; grid-template-columns: 1.2fr .9fr;}
+  @media (max-width: 980px){ main{grid-template-columns:1fr;} }
+
+  /* Cards */
+  .card{
+    background: linear-gradient(180deg, #171a2b 0%, #14182a 100%);
+    border:1px solid #23263a;
+    border-radius:16px; padding:16px; box-shadow: 0 10px 30px #00000044, inset 0 1px 0 #2a2f4a33;
+  }
+  .card h2{margin:0 0 10px; font-size:18px;}
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .spacer{height:8px}
+  .muted{color:var(--muted)}
+  .note{font-size:13px; color:var(--muted)}
+  .badge{display:inline-flex; gap:6px; align-items:center; font-size:12px; padding:4px 8px; border-radius:999px; background:#20243a; border:1px solid #2a2f47}
+  .legend{display:flex; gap:8px; flex-wrap:wrap}
+  .tag{display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:3px 8px; border-radius:999px; border:1px dashed #2a2f47; background:#1a1e35}
+  .dot{width:10px; height:10px; border-radius:50%}
+  .dot.pivot{background:var(--pivot)}
+  .dot.zero{background:var(--zero)}
+  .dot.focus{background:var(--focus); border:1px solid #334}
+  .dot.warn{background:var(--warn)}
+  .dot.danger{background:var(--danger)}
+
+  /* Controls */
+  .controls{display:flex; gap:8px; flex-wrap:wrap}
+  button, select, input[type="number"], input[type="text"]{
+    background:#1f2440; border:1px solid #313757; color:var(--ink); border-radius:10px; padding:10px 12px; font-size:14px;
+    outline:none;
+  }
+  button:hover{border-color:#3f4670}
+  button:active{transform: translateY(1px)}
+  button.primary{background:linear-gradient(180deg, #2a5a9a, #274b84); border-color:#3c63a0}
+  button.ghost{background:#181b2e}
+  button.warn{background:#3a2a12; border-color:#6b4a1c}
+  button.ok{background:#1c3a2e; border-color:#2b6b4d}
+  button.danger{background:#3a1c28; border-color:#6b2b45}
+  .pill{
+    display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:1px solid #2a2f47; border-radius:999px; background:#1a1e35; color:var(--muted);
+  }
+
+  /* Matrix grid */
+  .matrix-wrap{
+    position:relative; padding:14px 14px 10px; border-radius:14px; background:
+      linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)) ,
+      repeating-linear-gradient(0deg, transparent 0 31px, #14182a 31px 32px),
+      repeating-linear-gradient(90deg, transparent 0 31px, #14182a 31px 32px);
+    border:1px solid #282d46;
+    overflow:hidden;
+  }
+  .brackets::before, .brackets::after{
+    content:""; position:absolute; top:8px; bottom:8px; width:8px; border:2px solid #2f3554; border-left:none; border-right:none;
+  }
+  .brackets::before{left:6px; border-left:3px solid #2f3554; border-right:none; border-radius:10px 0 0 10px}
+  .brackets::after{right:6px; border-right:3px solid #2f3554; border-left:none; border-radius:0 10px 10px 0}
+  .matrix{
+    display:grid; gap:6px; justify-start: start; align-items:center;
+  }
+  .cell{
+    position:relative;
+  }
+  .cell input{
+    width:72px; padding:10px 10px; text-align:center; font-size:16px; color:var(--ink);
+    background:#1b203a; border:1px solid #2b3152; border-radius:10px; transition:border-color .15s, background .15s, box-shadow .15s;
+  }
+  .cell input:focus{border-color:#4e5aa0; box-shadow:0 0 0 2px #4e5aa022}
+  .pivotMark{
+    position:absolute; inset:auto auto -6px 50%; transform:translateX(-50%);
+    font-size:11px; padding:2px 6px; border-radius:999px; background:#103726; color:#b6ffd9; border:1px solid #23d18b55
+  }
+  .zeroMark{
+    position:absolute; inset:-6px -6px auto auto; font-size:10px; padding:2px 6px; border-radius:6px; background:#0e2a55; color:#cfe3ff; border:1px solid #67a7ff55
+  }
+  .stair{
+    position:absolute; pointer-events:none; inset:8px 8px 8px 8px;
+  }
+  .stair .step{
+    position:absolute; border-left:2px dashed #3b8cff66; border-bottom:2px dashed #3b8cff66; border-radius:0 0 0 8px;
+  }
+
+  /* Sidebar */
+  .log{
+    background:#131628; border:1px solid #242846; border-radius:12px; padding:10px; height:220px; overflow:auto; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:13px;
+  }
+  .log b{color:#fff}
+  .kpis{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-top:8px;
+  }
+  .kpi{
+    background:#12162a; border:1px solid #242846; border-radius:10px; padding:8px; text-align:center
+  }
+  .kpi .label{font-size:11px; color:var(--muted)}
+  .kpi .value{font-size:16px; margin-top:4px}
+  .check{
+    padding:10px; border-radius:10px; border:1px solid #2a303f; background:#14192c; display:flex; align-items:center; justify-content:space-between; gap:10px
+  }
+  .check .status{font-weight:600}
+  .status.ok{color:var(--ok)} .status.no{color:var(--danger)}
+
+  /* Help */
+  details{border:1px solid #272c46; background:#13182d; border-radius:10px; padding:10px 12px}
+  summary{cursor:pointer; font-weight:600}
+  .help-list{margin:.5em 0 0 1.1em}
+  .help-list li{margin:.25em 0}
+
+  /* Footer */
+  footer{max-width:1100px; margin:10px auto 36px; padding:0 16px; color:var(--muted); font-size:13px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+  <header>
+    <h1>Row Echelon Form — Interactive Matrix Lab</h1>
+    <p class="sub">Explore the <b>staircase</b> shape of <b>row echelon form</b>. Enter a matrix, then use <i>Next Step</i> to perform Gaussian elimination (with partial pivoting) one action at a time. Labels highlight <span class="badge"><span class="dot pivot"></span> pivots</span> and <span class="badge"><span class="dot zero"></span> forced zeros</span>. Or try manual row operations yourself.</p>
+  </header>
+
+  <main>
+    <!-- LEFT: Matrix + Controls -->
+    <section class="card">
+      <div class="row" aria-label="Matrix size and presets">
+        <div class="pill" title="Rows">Rows: <input id="rows" type="number" min="1" max="7" value="3" style="width:64px; margin-left:6px"></div>
+        <div class="pill" title="Columns">Cols: <input id="cols" type="number" min="1" max="7" value="3" style="width:64px; margin-left:6px"></div>
+        <button id="resize">Resize</button>
+        <span class="spacer" style="width:12px"></span>
+        <button id="presetA" class="ghost" title="Easy preset">Preset A</button>
+        <button id="presetB" class="ghost" title="Needs swapping">Preset B</button>
+        <button id="random" class="ghost">Randomize</button>
+        <button id="reset" class="ghost">Clear</button>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="matrix-wrap brackets" aria-label="Matrix grid">
+        <div id="stair" class="stair" aria-hidden="true"></div>
+        <div id="matrix" class="matrix"></div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="row legend" aria-label="Legend">
+        <span class="tag"><span class="dot pivot"></span> Pivot (leading entry)</span>
+        <span class="tag"><span class="dot zero"></span> Must be zero (below pivot)</span>
+        <span class="tag"><span class="dot focus"></span> Current column focus</span>
+        <span class="tag"><span class="dot warn"></span> Pending swap</span>
+        <span class="tag"><span class="dot danger"></span> Out of echelon order</span>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="row" aria-label="Auto elimination controls">
+        <button id="next" class="primary">Next Step ▷</button>
+        <button id="finish" class="ok">Finish to Echelon</button>
+        <button id="rref" class="warn" title="Not required for echelon — shows stricter form">Reduce to RREF</button>
+        <span class="note">Auto-elimination uses partial pivoting for stability.</span>
+      </div>
+
+      <div class="spacer"></div>
+
+      <details>
+        <summary>Manual Row Operations (do your own steps)</summary>
+        <div class="spacer"></div>
+        <div class="row">
+          <div class="pill">Swap R<select id="swapA"></select> ↔ R<select id="swapB"></select></div>
+          <button id="swapBtn">Swap</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="row">
+          <div class="pill">Scale R<select id="scaleRow"></select> by <input id="scaleK" type="number" value="2" step="0.1" style="width:84px"></div>
+          <button id="scaleBtn">Scale</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="row">
+          <div class="pill">R<select id="addTo"></select> ← R<select id="addTo"></select></div>
+        </div>
+        <div class="row">
+          <div class="pill">R<select id="addDest"></select> ← R<select id="addSrc"></select> + (<input id="addK" type="number" value="-1" step="0.1" style="width:84px">)·R<select id="addSrcTail"></select></div>
+          <button id="addBtn">Add Multiple</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="note">Tip: To zero an entry below a pivot at column <em>c</em>, use k = −a<sub>target,c</sub> / a<sub>pivot,c</sub>.</div>
+      </details>
+
+      <div class="spacer"></div>
+
+      <details open>
+        <summary>How to read the staircase</summary>
+        <ul class="help-list">
+          <li>Each pivot must be to the right of the pivot above it.</li>
+          <li>Everything <em>below</em> a pivot is forced to 0 (blue corner labels).</li>
+          <li>All-zero rows sink to the bottom (swap if needed).</li>
+          <li>Reduced Row Echelon Form (RREF) also makes each pivot = 1 and clears above it.</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- RIGHT: Narration, Log, Checks -->
+    <aside class="card">
+      <h2>Step Narration</h2>
+      <div id="narr" class="note" style="min-height:44px">Enter a matrix or pick a preset. Then click <b>Next Step</b> to begin elimination.</div>
+
+      <div class="spacer"></div>
+
+      <div class="check" aria-live="polite">
+        <div>
+          <div class="status-label muted">Row Echelon status:</div>
+          <div id="status" class="status no">Not checked</div>
+        </div>
+        <button id="checkBtn">Check</button>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="label">Rank (pivots)</div><div id="rank" class="value">–</div></div>
+        <div class="kpi"><div class="label">Zero rows bottom?</div><div id="zerosOk" class="value">–</div></div>
+        <div class="kpi"><div class="label">Staircase OK?</div><div id="stairOk" class="value">–</div></div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <h2>Operation Log</h2>
+      <div id="log" class="log" aria-live="polite"></div>
+    </aside>
+  </main>
+
+  <footer>
+    Built for learning: highlight pivots, force zeros below, and *feel* the staircase. Try your own moves and compare to the auto steps. — <i>Row Echelon Form Interactive Lab</i>
+  </footer>
+
+<script>
+/* ===========================
+   Utility Math (safe rounding)
+   =========================== */
+const EPS = 1e-10;
+function nearZero(x){ return Math.abs(x) < EPS; }
+function roundNice(x){
+  // Keep rationals nice when possible; otherwise 1e-10 cleanup then 4dp
+  if (Number.isInteger(x)) return x;
+  const r = Math.round((x + 0) * 10000) / 10000; // 4 dp
+  return nearZero(r) ? 0 : r;
+}
+
+/* ===========================
+   Matrix Model
+   =========================== */
+let R = 3, C = 3;
+let inputs = []; // DOM <input> refs [r][c]
+let currentStep = null; // state for auto elimination
+let logEl = null, narrEl = null;
+
+function createGrid(){
+  const grid = document.getElementById('matrix');
+  grid.style.gridTemplateColumns = `repeat(${C}, minmax(68px, 72px))`;
+  grid.innerHTML = '';
+  inputs = [];
+  for (let r=0; r<R; r++){
+    const row = [];
+    for (let c=0; c<C; c++){
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      const input = document.createElement('input');
+      input.type = 'number'; input.step = 'any';
+      input.value = (r===c)?1:0; // identity by default
+      input.setAttribute('aria-label', `Row ${r+1}, Col ${c+1}`);
+      input.addEventListener('input', ()=> { drawLabels(); });
+      cell.appendChild(input);
+      grid.appendChild(cell);
+      row.push(input);
+    }
+    inputs.push(row);
+  }
+  refreshRowSelectors();
+  drawLabels();
+  setNarr('Enter values, use presets, or press <b>Next Step</b>.');
+  clearLog();
+}
+
+function getMatrix(){
+  const M = [];
+  for (let r=0; r<R; r++){
+    const row = [];
+    for (let c=0; c<C; c++){
+      row.push(parseFloat(inputs[r][c].value || '0'));
+    }
+    M.push(row);
+  }
+  return M;
+}
+
+function setMatrix(M){
+  R = M.length; C = M[0].length;
+  document.getElementById('rows').value = R;
+  document.getElementById('cols').value = C;
+  createGrid();
+  for (let r=0; r<R; r++)
+    for (let c=0; c<C; c++)
+      inputs[r][c].value = roundNice(M[r][c]);
+  drawLabels();
+}
+
+function clearMatrix(){
+  for (let r=0; r<R; r++)
+    for (let c=0; c<C; c++)
+      inputs[r][c].value = 0;
+  drawLabels();
+}
+
+function randomMatrix(){
+  for (let r=0; r<R; r++)
+    for (let c=0; c<C; c++)
+      inputs[r][c].value = roundNice((Math.random()*6 - 3) | 0); // small ints
+  drawLabels();
+}
+
+/* ===========================
+   Row Operations
+   =========================== */
+function swapRows(M, i, j){
+  if (i===j) return;
+  const tmp = M[i]; M[i] = M[j]; M[j] = tmp;
+  addLog(`Swap R${i+1} ↔ R${j+1}`);
+}
+
+function scaleRow(M, i, k){
+  if (nearZero(k)) { addLog(`<span style="color:#ff9">Warning:</span> scaling by 0 ignored.`); return; }
+  for (let c=0; c<C; c++) M[i][c] = roundNice(M[i][c]*k);
+  addLog(`R${i+1} ← ${k}·R${i+1}`);
+}
+
+function addMultiple(M, dest, src, k){
+  for (let c=0; c<C; c++) M[dest][c] = roundNice(M[dest][c] + k*M[src][c]);
+  addLog(`R${dest+1} ← R${dest+1} + (${k})·R${src+1}`);
+}
+
+function writeBack(M){
+  for (let r=0; r<R; r++)
+    for (let c=0; c<C; c++)
+      inputs[r][c].value = roundNice(M[r][c]);
+  drawLabels();
+}
+
+/* ===========================
+   Echelon Checker
+   =========================== */
+function leadingIndex(row){
+  for (let c=0; c<C; c++){
+    if (!nearZero(row[c])) return c;
+  }
+  return null; // all zeros
+}
+
+function isRowEchelon(M){
+  let lastLead = -1;
+  let zeroZoneStarted = false;
+  for (let r=0; r<R; r++){
+    const lead = leadingIndex(M[r]);
+    if (lead === null){
+      // this is a zero row; all following rows must be zero
+      zeroZoneStarted = true;
+    }else{
+      if (zeroZoneStarted) return {ok:false, reason:`Nonzero row found below a zero row at R${r+1}.`};
+      if (lead <= lastLead) return {ok:false, reason:`Pivot in R${r+1} is not to the right of the pivot above.`};
+      // check below pivot are zero
+      for (let rr=r+1; rr<R; rr++){
+        if (!nearZero(M[rr][lead])) return {ok:false, reason:`Entry below pivot at (R${r+1}, C${lead+1}) is not zero.`};
+      }
+      lastLead = lead;
+    }
+  }
+  return {ok:true, reason:'Matrix is in row echelon form.'};
+}
+
+function rankOf(M){
+  let r=0;
+  for (let i=0; i<R; i++) if (leadingIndex(M[i]) !== null) r++;
+  return r;
+}
+
+/* ===========================
+   Auto Gaussian Elimination (stepwise)
+   =========================== */
+function nextAutoStep(){
+  const M = getMatrix();
+  if (!currentStep){
+    currentStep = {row:0, col:0, stage:'seekPivot', elimRow:null};
+    addLog('<b>Start elimination</b>');
+  }
+  let {row, col, stage, elimRow} = currentStep;
+
+  // advance col until we find a usable column or finish
+  function advanceToUsableColumn(){
+    while (col < C){
+      // If all rows from 'row' downward are zero in this column, move right
+      let nz = -1;
+      for (let r=row; r<R; r++){
+        if (!nearZero(M[r][col])) { nz = r; break; }
+      }
+      if (nz === -1){ col++; continue; }
+      return true;
+    }
+    return false;
+  }
+
+  // If row beyond R, we're done
+  if (row >= R || col >= C){
+    setNarr('No more steps — reached the end of elimination.');
+    addLog('<b>Elimination complete (echelon stage)</b>');
+    currentStep = null;
+    drawLabels({focusCol:null});
+    return;
+  }
+
+  // Stage machine
+  if (stage === 'seekPivot'){
+    if (!advanceToUsableColumn()){
+      setNarr('No more usable columns. Done.');
+      addLog('<b>Elimination complete</b>');
+      currentStep = null;
+      drawLabels({focusCol:null});
+      return;
+    }
+    // find pivot row
+    let pivotRow = -1, maxAbs = 0;
+    for (let r=row; r<R; r++){
+      const val = Math.abs(M[r][col]);
+      if (val > maxAbs){ maxAbs = val; pivotRow = r; }
+    }
+    if (pivotRow !== row){
+      swapRows(M, row, pivotRow);
+      setNarr(`Swap to bring a nonzero entry into pivot position at (R${row+1}, C${col+1}).`);
+      writeBack(M);
+      currentStep = {row, col, stage:'scalePivot', elimRow:null};
+      drawLabels({focusCol:col});
+      return;
+    }else{
+      setNarr(`Found pivot candidate at (R${row+1}, C${col+1}).`);
+      currentStep = {row, col, stage:'scalePivot', elimRow:null};
+      drawLabels({focusCol:col});
+      return;
+    }
+  }
+
+  if (stage === 'scalePivot'){
+    const a = M[row][col];
+    if (!nearZero(a) && a !== 1){
+      const k = roundNice(1/a);
+      scaleRow(M, row, k);
+      setNarr(`Scale R${row+1} so the pivot becomes 1.`);
+      writeBack(M);
+      currentStep = {row, col, stage:'elimBelow', elimRow:row+1};
+      drawLabels({focusCol:col});
+      return;
+    }else{
+      currentStep = {row, col, stage:'elimBelow', elimRow:row+1};
+    }
+  }
+
+  if (stage === 'elimBelow'){
+    // eliminate entries below pivot in column 'col'
+    while (currentStep.elimRow < R && nearZero(M[currentStep.elimRow][col])){
+      currentStep.elimRow++;
+    }
+    if (currentStep.elimRow >= R){
+      // move to next pivot row/col
+      currentStep = {row: row+1, col: col+1, stage:'seekPivot', elimRow:null};
+      setNarr('Column cleared below pivot. Move to next pivot to the right and down.');
+      writeBack(M);
+      drawLabels({focusCol:col+1});
+      return;
+    }else{
+      const r2 = currentStep.elimRow;
+      const k = roundNice(- M[r2][col] / (nearZero(M[row][col]) ? 1 : M[row][col]));
+      addMultiple(M, r2, row, k);
+      setNarr(`Zero entry at (R${r2+1}, C${col+1}) by R${r2+1} ← R${r2+1} + (${k})·R${row+1}.`);
+      writeBack(M);
+      currentStep.elimRow++;
+      drawLabels({focusCol:col});
+      return;
+    }
+  }
+}
+
+function finishToEchelon(){
+  let guard = 0;
+  while (guard++ < 500){
+    const before = JSON.stringify(getMatrix());
+    nextAutoStep();
+    const after = JSON.stringify(getMatrix());
+    if (before === after) break;
+    if (!currentStep) break;
+  }
+}
+
+function reduceToRREF(){
+  // First finish echelon
+  finishToEchelon();
+  const M = getMatrix();
+
+  // back substitution to clear above pivots + normalize
+  // Find pivot positions
+  const pivots = [];
+  for (let r=0; r<R; r++){
+    const lead = leadingIndex(M[r]);
+    if (lead !== null) pivots.push({r, c: lead});
+  }
+  // Normalize pivots to 1
+  for (const {r,c} of pivots){
+    if (!nearZero(M[r][c]) && M[r][c] !== 1){
+      const k = roundNice(1 / M[r][c]);
+      scaleRow(M, r, k);
+    }
+  }
+  // Clear above
+  for (let i=pivots.length-1; i>=0; i--){
+    const {r, c} = pivots[i];
+    for (let rr=0; rr<r; rr++){
+      if (!nearZero(M[rr][c])){
+        const k = roundNice(- M[rr][c] / (nearZero(M[r][c])?1:M[r][c]));
+        addMultiple(M, rr, r, k);
+      }
+    }
+  }
+  writeBack(M);
+  setNarr('Reduced Row Echelon Form completed: pivots are 1 and the only nonzero in their columns.');
+}
+
+/* ===========================
+   Labels & Staircase Overlay
+   =========================== */
+function drawLabels(opts={}){
+  const focusCol = (opts && typeof opts.focusCol === 'number') ? opts.focusCol : null;
+
+  // Remove old labels and staircase
+  document.querySelectorAll('.pivotMark,.zeroMark').forEach(el => el.remove());
+  const stair = document.getElementById('stair');
+  stair.innerHTML = '';
+
+  const M = getMatrix();
+  // Leading indices
+  const leads = [];
+  for (let r=0; r<R; r++) leads.push(leadingIndex(M[r]));
+
+  // Add pivot and zero-below marks
+  for (let r=0; r<R; r++){
+    const li = leads[r];
+    for (let c=0; c<C; c++){
+      const cell = inputs[r][c].parentElement;
+      // focus column subtle glow
+      if (c === focusCol) {
+        cell.querySelector('input').style.boxShadow = '0 0 0 2px #e4ff8030';
+        cell.querySelector('input').style.borderColor = '#98a83f';
+      } else {
+        cell.querySelector('input').style.boxShadow = 'none';
+        cell.querySelector('input').style.borderColor = '#2b3152';
+      }
+    }
+    if (li !== null){
+      const cell = inputs[r][li].parentElement;
+      const pm = document.createElement('div');
+      pm.className = 'pivotMark';
+      pm.textContent = 'pivot';
+      cell.appendChild(pm);
+
+      // below zeros
+      for (let rr=r+1; rr<R; rr++){
+        const zcell = inputs[rr][li].parentElement;
+        if (!nearZero(M[rr][li])){
+          const zm = document.createElement('div'); zm.className='zeroMark'; zm.textContent='make 0'; zcell.appendChild(zm);
+        }
+      }
+    }
+  }
+
+  // Draw staircase guide from pivot positions
+  let rr = 0, cc = 0;
+  while (rr<R && cc<C){
+    // find next pivot row index >= rr where lead == cc
+    let found = -1;
+    for (let r=rr; r<R; r++){
+      if (leads[r] === cc){ found = r; break; }
+    }
+    // Draw an L-corner at (found, cc) if found
+    if (found !== -1){
+      const x = cc, y = found;
+      const cellRect = inputs[y][x].getBoundingClientRect();
+      const hostRect = stair.getBoundingClientRect();
+
+      const corner = document.createElement('div');
+      corner.className = 'step';
+      // align roughly along grid cell boundaries; 92 is approx cell+gap space; but compute via DOM
+      const inputEl = inputs[y][x];
+      const rct = inputEl.getBoundingClientRect();
+      const top = rct.top - hostRect.top;
+      const left = rct.left - hostRect.left;
+      corner.style.top = (top - 6)+'px';
+      corner.style.left = (left - 6)+'px';
+      corner.style.width = (rct.width + 12)+'px';
+      corner.style.height = (rct.height + 12)+'px';
+      stair.appendChild(corner);
+
+      rr = found + 1; cc = cc + 1;
+    } else {
+      cc++;
+    }
+  }
+
+  // Update quick checks
+  const res = isRowEchelon(M);
+  const status = document.getElementById('status');
+  status.textContent = res.ok ? 'Yes — Echelon ✅' : 'Not yet';
+  status.className = 'status ' + (res.ok ? 'ok' : 'no');
+  document.getElementById('rank').textContent = rankOf(M);
+  // zero rows bottom
+  let zerosBottom = true, zeroSeen = false;
+  for (let r=0; r<R; r++){
+    const isZero = (leadingIndex(M[r]) === null);
+    if (isZero) zeroSeen = true;
+    else if (zeroSeen) zerosBottom = false;
+  }
+  document.getElementById('zerosOk').textContent = zerosBottom ? 'Yes' : 'No';
+  // staircase OK (strictly increasing leads)
+  let stairOK = true, last = -1;
+  for (let r=0; r<R; r++){
+    const li = leadingIndex(M[r]);
+    if (li !== null){
+      if (li <= last) stairOK = false;
+      last = li;
+    } else if (r < R-1){
+      // ensure nothing after breaks
+      // handled above by zerosBottom
+    }
+  }
+  document.getElementById('stairOk').textContent = stairOK ? 'Yes' : 'No';
+}
+
+/* ===========================
+   UI Helpers
+   =========================== */
+function setNarr(html){ narrEl.innerHTML = html; }
+function addLog(html){
+  logEl.insertAdjacentHTML('beforeend', `<div>• ${html}</div>`);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function clearLog(){ logEl.innerHTML = ''; }
+
+function refreshRowSelectors(){
+  const opts = Array.from({length:R}, (_,i)=> `<option value="${i}">${i+1}</option>`).join('');
+  ['swapA','swapB','scaleRow','addDest','addSrc','addSrcTail'].forEach(id=>{
+    const el = document.getElementById(id);
+    el.innerHTML = opts;
+  });
+}
+
+/* ===========================
+   Presets
+   =========================== */
+function presetA(){
+  setMatrix([
+    [1, 2, 1],
+    [2, 3, 4],
+    [-1, 0, 2],
+  ]);
+  setNarr('Preset A loaded. Try <b>Next Step</b> to see pivoting and elimination.');
+}
+function presetB(){
+  setMatrix([
+    [0, 2, 4, 6],
+    [0, 0, 5, 7],
+    [3, 1, 2, 9],
+  ]);
+  setNarr('Preset B loaded (needs a top-row swap first). Step through to see partial pivoting.');
+}
+
+/* ===========================
+   Wire up UI
+   =========================== */
+window.addEventListener('DOMContentLoaded', ()=>{
+  logEl = document.getElementById('log');
+  narrEl = document.getElementById('narr');
+
+  document.getElementById('resize').addEventListener('click', ()=>{
+    const r = Math.max(1, Math.min(7, parseInt(document.getElementById('rows').value||'3')));
+    const c = Math.max(1, Math.min(7, parseInt(document.getElementById('cols').value||'3')));
+    R = r; C = c; createGrid();
+  });
+
+  document.getElementById('random').addEventListener('click', ()=>{ randomMatrix(); setNarr('Random matrix generated.') });
+  document.getElementById('reset').addEventListener('click', ()=>{ clearMatrix(); setNarr('Matrix cleared. Enter your own values.'); drawLabels(); });
+  document.getElementById('presetA').addEventListener('click', presetA);
+  document.getElementById('presetB').addEventListener('click', presetB);
+
+  document.getElementById('next').addEventListener('click', nextAutoStep);
+  document.getElementById('finish').addEventListener('click', finishToEchelon);
+  document.getElementById('rref').addEventListener('click', reduceToRREF);
+
+  document.getElementById('checkBtn').addEventListener('click', ()=>{
+    const res = isRowEchelon(getMatrix());
+    setNarr(res.ok ? '✅ This matrix is in row echelon form.' : '❌ Not in echelon. ' + res.reason);
+    drawLabels();
+  });
+
+  // Manual ops
+  document.getElementById('swapBtn').addEventListener('click', ()=>{
+    const a = parseInt(document.getElementById('swapA').value);
+    const b = parseInt(document.getElementById('swapB').value);
+    const M = getMatrix(); swapRows(M, a, b); writeBack(M); setNarr(`Swapped rows R${a+1} and R${b+1}.`);
+  });
+
+  document.getElementById('scaleBtn').addEventListener('click', ()=>{
+    const r = parseInt(document.getElementById('scaleRow').value);
+    const k = parseFloat(document.getElementById('scaleK').value || '1');
+    const M = getMatrix(); scaleRow(M, r, k); writeBack(M); setNarr(`Scaled R${r+1} by ${k}.`);
+  });
+
+  document.getElementById('addBtn').addEventListener('click', ()=>{
+    const dest = parseInt(document.getElementById('addDest').value);
+    const src  = parseInt(document.getElementById('addSrc').value);
+    const src2 = parseInt(document.getElementById('addSrcTail').value);
+    if (src !== src2){
+      // keep UI consistent: two dropdowns must match; if not, use the second as the src
+    }
+    const k = parseFloat(document.getElementById('addK').value || '0');
+    const M = getMatrix(); addMultiple(M, dest, src2, k); writeBack(M); setNarr(`Added ${k}·R${src2+1} to R${dest+1}.`);
+  });
+
+  createGrid();
+});
+</script>
+</body>
+</html>
+```

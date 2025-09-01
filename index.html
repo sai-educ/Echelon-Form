@@ -1,713 +1,521 @@
-Here you go — a single, self-contained HTML file (with inline CSS & JS) that lets students *see* and *play with* Row Echelon Form step-by-step. It includes: labeled pivots, a staircase guide, an operation log, manual row-operation controls (swap / scale / add multiple), and an auto “Next Step” button that performs Gaussian elimination one action at a time (with partial pivoting). There are presets, randomize, reset, and a live “Is Echelon?” checker.
-
-Just copy everything below into a file like `echelon-lab.html` and open it in your browser.
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Echelon Form Interactive Lab</title>
+<title>Matrix Normal Form — Interactive Lab (Rank via Row & Column Ops)</title>
 <style>
   :root{
-    --bg:#0f1220;
-    --panel:#171a2b;
-    --ink:#e9ebff;
-    --muted:#b9bfe5;
-    --accent:#7cd3ff;
-    --accent-2:#9effa7;
-    --warn:#ffcf75;
-    --danger:#ff7b9c;
-    --ok:#45df9a;
-    --grid:#23263a;
-    --pivot:#23d18b;
-    --zero:#67a7ff;
-    --focus:#e4ff80;
+    --bg:#0e1220; --panel:#151a2e; --ink:#eaf0ff; --muted:#b7bee2;
+    --accent:#7fd4ff; --ok:#3ad59a; --warn:#ffd074; --danger:#ff8aa5;
+    --grid:#232744; --pivot:#22d39a; --focus:#e8ff7d; --zero:#6fb3ff; --id:#9fffa8;
   }
-  html,body{height:100%;}
+  html,body{height:100%}
   body{
-    margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji"; 
-    color:var(--ink); background: radial-gradient(1200px 600px at 15% -10%, #1a1f39 0%, #0f1220 60%) fixed;
+    margin:0; font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans";
+    color:var(--ink); background: radial-gradient(1200px 700px at 15% -10%, #1a2142 0%, #0e1220 60%) fixed;
   }
-  header{
-    padding:24px 16px 8px; max-width:1100px; margin:0 auto;
-  }
-  h1{margin:0 0 8px; font-size:clamp(22px, 3.2vw, 34px); letter-spacing:.2px;}
-  .sub{color:var(--muted); max-width:900px; line-height:1.4}
-  main{max-width:1100px; margin:16px auto 48px; padding:0 16px; display:grid; gap:16px; grid-template-columns: 1.2fr .9fr;}
-  @media (max-width: 980px){ main{grid-template-columns:1fr;} }
+  header{max-width:1200px; margin:0 auto; padding:26px 16px 8px}
+  h1{margin:0 0 6px; font-size:clamp(22px,3.2vw,34px)}
+  .sub{color:var(--muted); max-width:980px}
+  main{max-width:1200px; margin:12px auto 40px; padding:0 16px; display:grid; gap:16px; grid-template-columns:1.25fr .95fr}
+  @media (max-width:1050px){ main{grid-template-columns:1fr} }
 
-  /* Cards */
-  .card{
-    background: linear-gradient(180deg, #171a2b 0%, #14182a 100%);
-    border:1px solid #23263a;
-    border-radius:16px; padding:16px; box-shadow: 0 10px 30px #00000044, inset 0 1px 0 #2a2f4a33;
-  }
-  .card h2{margin:0 0 10px; font-size:18px;}
+  .card{background:linear-gradient(180deg,#161b32 0%,#13182b 100%); border:1px solid #242946; border-radius:16px; padding:14px; box-shadow:0 10px 28px #00000045, inset 0 1px 0 #2a2f4a33}
+  h2{margin:0 0 8px; font-size:18px}
   .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
   .spacer{height:8px}
   .muted{color:var(--muted)}
-  .note{font-size:13px; color:var(--muted)}
-  .badge{display:inline-flex; gap:6px; align-items:center; font-size:12px; padding:4px 8px; border-radius:999px; background:#20243a; border:1px solid #2a2f47}
-  .legend{display:flex; gap:8px; flex-wrap:wrap}
-  .tag{display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:3px 8px; border-radius:999px; border:1px dashed #2a2f47; background:#1a1e35}
+  .badge{display:inline-flex; gap:6px; align-items:center; font-size:12px; padding:4px 8px; border-radius:999px; background:#1a1f38; border:1px solid #2a3256}
+  .tag{display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:3px 8px; border-radius:999px; border:1px dashed #2a2f47; background:#141a34}
   .dot{width:10px; height:10px; border-radius:50%}
-  .dot.pivot{background:var(--pivot)}
-  .dot.zero{background:var(--zero)}
-  .dot.focus{background:var(--focus); border:1px solid #334}
-  .dot.warn{background:var(--warn)}
-  .dot.danger{background:var(--danger)}
+  .dot.pivot{background:var(--pivot)} .dot.zero{background:var(--zero)} .dot.focus{background:var(--focus)}
+  .dot.id{background:var(--id)} .dot.warn{background:var(--warn)} .dot.danger{background:var(--danger)}
 
-  /* Controls */
-  .controls{display:flex; gap:8px; flex-wrap:wrap}
   button, select, input[type="number"], input[type="text"]{
-    background:#1f2440; border:1px solid #313757; color:var(--ink); border-radius:10px; padding:10px 12px; font-size:14px;
-    outline:none;
+    background:#1d2340; border:1px solid #31385b; color:var(--ink); border-radius:10px; padding:10px 12px; font-size:14px; outline:none;
   }
-  button:hover{border-color:#3f4670}
-  button:active{transform: translateY(1px)}
-  button.primary{background:linear-gradient(180deg, #2a5a9a, #274b84); border-color:#3c63a0}
-  button.ghost{background:#181b2e}
-  button.warn{background:#3a2a12; border-color:#6b4a1c}
-  button.ok{background:#1c3a2e; border-color:#2b6b4d}
+  button:hover{border-color:#3e4872} button:active{transform:translateY(1px)}
+  button.primary{background:linear-gradient(180deg,#2a5a9a,#274b84); border-color:#3c63a0}
+  button.ghost{background:#171b30}
+  button.ok{background:#173528; border-color:#2f6b4c}
+  button.warn{background:#3a3012; border-color:#69561b}
   button.danger{background:#3a1c28; border-color:#6b2b45}
-  .pill{
-    display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:1px solid #2a2f47; border-radius:999px; background:#1a1e35; color:var(--muted);
-  }
+  .pill{display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:1px solid #2a2f47; border-radius:999px; background:#131a34; color:var(--muted)}
 
-  /* Matrix grid */
   .matrix-wrap{
-    position:relative; padding:14px 14px 10px; border-radius:14px; background:
-      linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)) ,
-      repeating-linear-gradient(0deg, transparent 0 31px, #14182a 31px 32px),
-      repeating-linear-gradient(90deg, transparent 0 31px, #14182a 31px 32px);
-    border:1px solid #282d46;
-    overflow:hidden;
+    position:relative; padding:14px; border-radius:14px;
+    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0)),
+                repeating-linear-gradient(0deg, transparent 0 31px, #14182a 31px 32px),
+                repeating-linear-gradient(90deg, transparent 0 31px, #14182a 31px 32px);
+    border:1px solid #282d46; overflow:hidden;
   }
-  .brackets::before, .brackets::after{
+  .brackets::before,.brackets::after{
     content:""; position:absolute; top:8px; bottom:8px; width:8px; border:2px solid #2f3554; border-left:none; border-right:none;
   }
-  .brackets::before{left:6px; border-left:3px solid #2f3554; border-right:none; border-radius:10px 0 0 10px}
-  .brackets::after{right:6px; border-right:3px solid #2f3554; border-left:none; border-radius:0 10px 10px 0}
-  .matrix{
-    display:grid; gap:6px; justify-start: start; align-items:center;
-  }
-  .cell{
-    position:relative;
-  }
+  .brackets::before{left:6px; border-left:3px solid #2f3554; border-radius:10px 0 0 10px}
+  .brackets::after{right:6px; border-right:3px solid #2f3554; border-radius:0 10px 10px 0}
+  .matrix{display:grid; gap:6px}
+  .cell{position:relative}
   .cell input{
-    width:72px; padding:10px 10px; text-align:center; font-size:16px; color:var(--ink);
-    background:#1b203a; border:1px solid #2b3152; border-radius:10px; transition:border-color .15s, background .15s, box-shadow .15s;
+    width:76px; padding:10px; text-align:center; font-size:16px; color:var(--ink);
+    background:#182044; border:1px solid #2b3356; border-radius:10px; transition:border-color .15s, box-shadow .15s;
   }
-  .cell input:focus{border-color:#4e5aa0; box-shadow:0 0 0 2px #4e5aa022}
-  .pivotMark{
-    position:absolute; inset:auto auto -6px 50%; transform:translateX(-50%);
-    font-size:11px; padding:2px 6px; border-radius:999px; background:#103726; color:#b6ffd9; border:1px solid #23d18b55
-  }
-  .zeroMark{
-    position:absolute; inset:-6px -6px auto auto; font-size:10px; padding:2px 6px; border-radius:6px; background:#0e2a55; color:#cfe3ff; border:1px solid #67a7ff55
-  }
-  .stair{
-    position:absolute; pointer-events:none; inset:8px 8px 8px 8px;
-  }
-  .stair .step{
-    position:absolute; border-left:2px dashed #3b8cff66; border-bottom:2px dashed #3b8cff66; border-radius:0 0 0 8px;
-  }
+  .cell input:focus{border-color:#4f5ba2; box-shadow:0 0 0 2px #4f5ba233}
+  .pivotMark{position:absolute; inset:auto auto -6px 50%; transform:translateX(-50%); font-size:11px; padding:2px 6px; border-radius:999px; background:#0e3929; color:#b8ffe0; border:1px solid #23d18b55}
+  .zeroMark{position:absolute; inset:-6px -6px auto auto; font-size:10px; padding:2px 6px; border-radius:6px; background:#0d2b55; color:#cfe3ff; border:1px solid #67a7ff55}
+  .idMark{position:absolute; inset:-6px auto auto -6px; font-size:10px; padding:2px 6px; border-radius:6px; background:#0d3a24; color:#caffd5; border:1px solid #9fffa855}
 
-  /* Sidebar */
-  .log{
-    background:#131628; border:1px solid #242846; border-radius:12px; padding:10px; height:220px; overflow:auto; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:13px;
-  }
-  .log b{color:#fff}
-  .kpis{
-    display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-top:8px;
-  }
-  .kpi{
-    background:#12162a; border:1px solid #242846; border-radius:10px; padding:8px; text-align:center
-  }
-  .kpi .label{font-size:11px; color:var(--muted)}
-  .kpi .value{font-size:16px; margin-top:4px}
-  .check{
-    padding:10px; border-radius:10px; border:1px solid #2a303f; background:#14192c; display:flex; align-items:center; justify-content:space-between; gap:10px
-  }
-  .check .status{font-weight:600}
-  .status.ok{color:var(--ok)} .status.no{color:var(--danger)}
+  .stair{position:absolute; inset:8px; pointer-events:none}
+  .idBlock{position:absolute; border:2px dashed #9fffa866; border-radius:8px}
 
-  /* Help */
-  details{border:1px solid #272c46; background:#13182d; border-radius:10px; padding:10px 12px}
+  .log{background:#12162a; border:1px solid #242846; border-radius:12px; padding:10px; height:220px; overflow:auto; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px}
+  .kpis{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px}
+  .kpi{background:#12162a; border:1px solid #242846; border-radius:10px; padding:8px; text-align:center}
+  .kpi .label{font-size:11px; color:var(--muted)} .kpi .value{font-size:16px; margin-top:4px}
+
+  details{border:1px solid #262c48; background:#12182e; border-radius:10px; padding:10px}
   summary{cursor:pointer; font-weight:600}
-  .help-list{margin:.5em 0 0 1.1em}
-  .help-list li{margin:.25em 0}
 
-  /* Footer */
-  footer{max-width:1100px; margin:10px auto 36px; padding:0 16px; color:var(--muted); font-size:13px}
+  footer{max-width:1200px; margin:8px auto 40px; padding:0 16px; color:var(--muted); font-size:13px}
   a{color:var(--accent)}
 </style>
 </head>
 <body>
-  <header>
-    <h1>Row Echelon Form — Interactive Matrix Lab</h1>
-    <p class="sub">Explore the <b>staircase</b> shape of <b>row echelon form</b>. Enter a matrix, then use <i>Next Step</i> to perform Gaussian elimination (with partial pivoting) one action at a time. Labels highlight <span class="badge"><span class="dot pivot"></span> pivots</span> and <span class="badge"><span class="dot zero"></span> forced zeros</span>. Or try manual row operations yourself.</p>
-  </header>
+<header>
+  <h1>Normal Form of a Matrix — Interactive Rank Lab</h1>
+  <p class="sub">
+    Goal: reduce a matrix <b>A</b> by <b>row and column operations</b> to its <b>Normal Form</b> 
+    <code>N = diag(I<sub>r</sub>, 0)</code>, where <b>r = rank(A)</b>. Use the controls to perform operations 
+    yourself or step through the auto method. Labels show pivots, the growing identity block, and zeroed zones.
+  </p>
+</header>
 
-  <main>
-    <!-- LEFT: Matrix + Controls -->
-    <section class="card">
-      <div class="row" aria-label="Matrix size and presets">
-        <div class="pill" title="Rows">Rows: <input id="rows" type="number" min="1" max="7" value="3" style="width:64px; margin-left:6px"></div>
-        <div class="pill" title="Columns">Cols: <input id="cols" type="number" min="1" max="7" value="3" style="width:64px; margin-left:6px"></div>
-        <button id="resize">Resize</button>
-        <span class="spacer" style="width:12px"></span>
-        <button id="presetA" class="ghost" title="Easy preset">Preset A</button>
-        <button id="presetB" class="ghost" title="Needs swapping">Preset B</button>
-        <button id="random" class="ghost">Randomize</button>
-        <button id="reset" class="ghost">Clear</button>
+<main>
+  <!-- LEFT: Matrix & Controls -->
+  <section class="card">
+    <div class="row" aria-label="Matrix size and presets">
+      <div class="pill">Rows: <input id="rows" type="number" min="1" max="7" value="3" style="width:64px; margin-left:6px"></div>
+      <div class="pill">Cols: <input id="cols" type="number" min="1" max="7" value="4" style="width:64px; margin-left:6px"></div>
+      <button id="resize">Resize</button>
+      <span class="spacer" style="width:8px"></span>
+      <button id="presetA" class="ghost">Preset A</button>
+      <button id="presetB" class="ghost">Preset B</button>
+      <button id="random" class="ghost">Randomize</button>
+      <button id="reset" class="ghost">Clear</button>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="matrix-wrap brackets" aria-label="Matrix grid">
+      <div id="stair" class="stair" aria-hidden="true"></div>
+      <div id="matrix" class="matrix"></div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="row">
+      <span class="tag"><span class="dot pivot"></span> Pivot position</span>
+      <span class="tag"><span class="dot id"></span> Inside identity block</span>
+      <span class="tag"><span class="dot zero"></span> Must be zero</span>
+      <span class="tag"><span class="dot focus"></span> Current pivot focus</span>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="row" aria-label="Auto controls">
+      <button id="next" class="primary">Next Step ▷</button>
+      <button id="finish" class="ok">Finish to Normal Form</button>
+      <button id="check" class="ghost">Check Normal Form</button>
+      <span class="muted">Auto uses row <i>and</i> column pivoting: we seek a nonzero entry, bring it to (k,k), scale to 1, zero its row & column, then advance.</span>
+    </div>
+
+    <div class="spacer"></div>
+
+    <details>
+      <summary>Manual Row & Column Operations</summary>
+      <div class="spacer"></div>
+      <div class="row">
+        <div class="pill">Swap R<select id="rSwapA"></select> ↔ R<select id="rSwapB"></select></div>
+        <button id="rSwapBtn">Swap Rows</button>
       </div>
-
       <div class="spacer"></div>
-
-      <div class="matrix-wrap brackets" aria-label="Matrix grid">
-        <div id="stair" class="stair" aria-hidden="true"></div>
-        <div id="matrix" class="matrix"></div>
+      <div class="row">
+        <div class="pill">Swap C<select id="cSwapA"></select> ↔ C<select id="cSwapB"></select></div>
+        <button id="cSwapBtn">Swap Cols</button>
       </div>
-
       <div class="spacer"></div>
-
-      <div class="row legend" aria-label="Legend">
-        <span class="tag"><span class="dot pivot"></span> Pivot (leading entry)</span>
-        <span class="tag"><span class="dot zero"></span> Must be zero (below pivot)</span>
-        <span class="tag"><span class="dot focus"></span> Current column focus</span>
-        <span class="tag"><span class="dot warn"></span> Pending swap</span>
-        <span class="tag"><span class="dot danger"></span> Out of echelon order</span>
+      <div class="row">
+        <div class="pill">Scale R<select id="rScaleRow"></select> by <input id="rScaleK" type="number" value="2" step="0.1" style="width:84px"></div>
+        <button id="rScaleBtn">Scale Row</button>
       </div>
-
       <div class="spacer"></div>
-
-      <div class="row" aria-label="Auto elimination controls">
-        <button id="next" class="primary">Next Step ▷</button>
-        <button id="finish" class="ok">Finish to Echelon</button>
-        <button id="rref" class="warn" title="Not required for echelon — shows stricter form">Reduce to RREF</button>
-        <span class="note">Auto-elimination uses partial pivoting for stability.</span>
+      <div class="row">
+        <div class="pill">Scale C<select id="cScaleCol"></select> by <input id="cScaleK" type="number" value="2" step="0.1" style="width:84px"></div>
+        <button id="cScaleBtn">Scale Col</button>
       </div>
-
       <div class="spacer"></div>
-
-      <details>
-        <summary>Manual Row Operations (do your own steps)</summary>
-        <div class="spacer"></div>
-        <div class="row">
-          <div class="pill">Swap R<select id="swapA"></select> ↔ R<select id="swapB"></select></div>
-          <button id="swapBtn">Swap</button>
-        </div>
-        <div class="spacer"></div>
-        <div class="row">
-          <div class="pill">Scale R<select id="scaleRow"></select> by <input id="scaleK" type="number" value="2" step="0.1" style="width:84px"></div>
-          <button id="scaleBtn">Scale</button>
-        </div>
-        <div class="spacer"></div>
-        <div class="row">
-          <div class="pill">R<select id="addTo"></select> ← R<select id="addTo"></select></div>
-        </div>
-        <div class="row">
-          <div class="pill">R<select id="addDest"></select> ← R<select id="addSrc"></select> + (<input id="addK" type="number" value="-1" step="0.1" style="width:84px">)·R<select id="addSrcTail"></select></div>
-          <button id="addBtn">Add Multiple</button>
-        </div>
-        <div class="spacer"></div>
-        <div class="note">Tip: To zero an entry below a pivot at column <em>c</em>, use k = −a<sub>target,c</sub> / a<sub>pivot,c</sub>.</div>
-      </details>
-
-      <div class="spacer"></div>
-
-      <details open>
-        <summary>How to read the staircase</summary>
-        <ul class="help-list">
-          <li>Each pivot must be to the right of the pivot above it.</li>
-          <li>Everything <em>below</em> a pivot is forced to 0 (blue corner labels).</li>
-          <li>All-zero rows sink to the bottom (swap if needed).</li>
-          <li>Reduced Row Echelon Form (RREF) also makes each pivot = 1 and clears above it.</li>
-        </ul>
-      </details>
-    </section>
-
-    <!-- RIGHT: Narration, Log, Checks -->
-    <aside class="card">
-      <h2>Step Narration</h2>
-      <div id="narr" class="note" style="min-height:44px">Enter a matrix or pick a preset. Then click <b>Next Step</b> to begin elimination.</div>
-
-      <div class="spacer"></div>
-
-      <div class="check" aria-live="polite">
-        <div>
-          <div class="status-label muted">Row Echelon status:</div>
-          <div id="status" class="status no">Not checked</div>
-        </div>
-        <button id="checkBtn">Check</button>
+      <div class="row">
+        <div class="pill">R<select id="rAddDest"></select> ← R<select id="rAddDest2"></select> + (<input id="rAddK" type="number" value="-1" step="0.1" style="width:84px">)·R<select id="rAddSrc"></select></div>
+        <button id="rAddBtn">Add to Row</button>
       </div>
-
-      <div class="kpis">
-        <div class="kpi"><div class="label">Rank (pivots)</div><div id="rank" class="value">–</div></div>
-        <div class="kpi"><div class="label">Zero rows bottom?</div><div id="zerosOk" class="value">–</div></div>
-        <div class="kpi"><div class="label">Staircase OK?</div><div id="stairOk" class="value">–</div></div>
-      </div>
-
       <div class="spacer"></div>
+      <div class="row">
+        <div class="pill">C<select id="cAddDest"></select> ← C<select id="cAddDest2"></select> + (<input id="cAddK" type="number" value="-1" step="0.1" style="width:84px">)·C<select id="cAddSrc"></select></div>
+        <button id="cAddBtn">Add to Col</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="muted" style="font-size:13px">Tips: To zero an entry below/above a pivot in column <em>k</em>, add a multiple of the pivot row. To zero entries left/right of pivot in row <em>k</em>, add multiples of the pivot column.</div>
+    </details>
+  </section>
 
-      <h2>Operation Log</h2>
-      <div id="log" class="log" aria-live="polite"></div>
-    </aside>
-  </main>
+  <!-- RIGHT: Lesson, Narration, KPIs, Log -->
+  <aside class="card">
+    <h2>Mini-Lesson: Normal Form (for Rank)</h2>
+    <div class="muted" id="lesson">
+      <p><b>What:</b> Normal Form over ℝ (or any field) reduces a matrix A by <i>row and column</i> operations into <code>N = diag(I<sub>r</sub>, 0)</code>. The number r is the <b>rank</b> of A.</p>
+      <p><b>Why:</b> It cleanly separates the “information” (an identity block) from redundancy (zeros). Perfect for reasoning about solvability, dimensions of solution spaces, and invertibility (square A is invertible iff r = n).</p>
+      <p><b>How (algorithm):</b> For k = 1…:
+        <ol style="margin:.35em 0 .2em 1.2em">
+          <li>Find a nonzero entry in the submatrix starting at (k,k). Swap rows/cols to move it to (k,k).</li>
+          <li>Scale R<sub>k</sub> and/or C<sub>k</sub> so a<sub>kk</sub>=1.</li>
+          <li>Use row/column additions to zero all other entries in row k and column k.</li>
+          <li>Increment k and repeat. Stop when no nonzero remains. The first k−1 pivots form I<sub>r</sub>.</li>
+        </ol>
+      </p>
+      <p class="muted">Concept link: every step corresponds to multiplying by elementary matrices P (left) and Q (right), so <code>P · A · Q = N</code>.</p>
+    </div>
 
-  <footer>
-    Built for learning: highlight pivots, force zeros below, and *feel* the staircase. Try your own moves and compare to the auto steps. — <i>Row Echelon Form Interactive Lab</i>
-  </footer>
+    <div class="spacer"></div>
+
+    <h2>Step Narration</h2>
+    <div id="narr" class="muted" style="min-height:44px">Enter a matrix or pick a preset. Then click <b>Next Step</b> to begin normal-form reduction.</div>
+
+    <div class="spacer"></div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="label">Rank (r)</div><div id="rank" class="value">–</div></div>
+      <div class="kpi"><div class="label">Identity size</div><div id="idSize" class="value">I<sub>0</sub></div></div>
+      <div class="kpi"><div class="label">Normal Form?</div><div id="nf" class="value">–</div></div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <h2>Operation Log</h2>
+    <div id="log" class="log" aria-live="polite"></div>
+
+    <div class="spacer"></div>
+
+    <details>
+      <summary>Quick Checks (ask students!)</summary>
+      <ul style="margin:.4em 0 0 1.1em">
+        <li>True/False: If A is 3×5 and rank(A)=3, then the normal form is diag(I<sub>3</sub>,0).</li>
+        <li>Which are allowed for normal form? (a) swap rows (b) add multiple of a row (c) scale a column (d) rotate columns — Answer: a,b,c (no geometric rotations).</li>
+        <li>Why can normal form reveal rank even when Gaussian elimination alone might be awkward?</li>
+      </ul>
+    </details>
+  </aside>
+</main>
+
+<footer>
+  Built for an Engineering Mathematics course • Focus: Normal Form & Rank via row and column operations • Try Preset B to see both row and column swaps in action.
+</footer>
 
 <script>
 /* ===========================
-   Utility Math (safe rounding)
+   Utilities
    =========================== */
 const EPS = 1e-10;
-function nearZero(x){ return Math.abs(x) < EPS; }
-function roundNice(x){
-  // Keep rationals nice when possible; otherwise 1e-10 cleanup then 4dp
-  if (Number.isInteger(x)) return x;
-  const r = Math.round((x + 0) * 10000) / 10000; // 4 dp
-  return nearZero(r) ? 0 : r;
-}
+const NZ = x => Math.abs(x) > EPS;
+const nearZero = x => Math.abs(x) < EPS;
+const r4 = x => nearZero(x) ? 0 : Math.round(x*10000)/10000;
 
 /* ===========================
-   Matrix Model
+   Model & DOM
    =========================== */
-let R = 3, C = 3;
-let inputs = []; // DOM <input> refs [r][c]
-let currentStep = null; // state for auto elimination
-let logEl = null, narrEl = null;
+let R=3, C=4;
+let inputs = []; // [r][c] <input>
+let stepState = null; // {k, stage, searchR, searchC, elimR, elimC}
+let logEl, narrEl;
 
 function createGrid(){
   const grid = document.getElementById('matrix');
-  grid.style.gridTemplateColumns = `repeat(${C}, minmax(68px, 72px))`;
+  grid.style.gridTemplateColumns = `repeat(${C}, minmax(68px,76px))`;
   grid.innerHTML = '';
   inputs = [];
-  for (let r=0; r<R; r++){
-    const row = [];
-    for (let c=0; c<C; c++){
-      const cell = document.createElement('div');
-      cell.className = 'cell';
-      const input = document.createElement('input');
-      input.type = 'number'; input.step = 'any';
-      input.value = (r===c)?1:0; // identity by default
-      input.setAttribute('aria-label', `Row ${r+1}, Col ${c+1}`);
-      input.addEventListener('input', ()=> { drawLabels(); });
-      cell.appendChild(input);
-      grid.appendChild(cell);
-      row.push(input);
+  for (let r=0;r<R;r++){
+    const row=[];
+    for (let c=0;c<C;c++){
+      const cell = document.createElement('div'); cell.className='cell';
+      const inp = document.createElement('input'); inp.type='number'; inp.step='any';
+      inp.value = (r===c?1:0);
+      inp.setAttribute('aria-label',`Row ${r+1}, Col ${c+1}`);
+      inp.addEventListener('input', drawLabels);
+      cell.appendChild(inp); grid.appendChild(cell); row.push(inp);
     }
     inputs.push(row);
   }
-  refreshRowSelectors();
+  refreshSelectors();
   drawLabels();
   setNarr('Enter values, use presets, or press <b>Next Step</b>.');
   clearLog();
 }
 
-function getMatrix(){
-  const M = [];
-  for (let r=0; r<R; r++){
-    const row = [];
-    for (let c=0; c<C; c++){
-      row.push(parseFloat(inputs[r][c].value || '0'));
-    }
-    M.push(row);
-  }
+function getM(){
+  const M=[]; for (let r=0;r<R;r++){ const row=[]; for (let c=0;c<C;c++){ row.push(parseFloat(inputs[r][c].value||'0')); } M.push(row); }
   return M;
 }
-
-function setMatrix(M){
+function setM(M){
   R = M.length; C = M[0].length;
   document.getElementById('rows').value = R;
   document.getElementById('cols').value = C;
   createGrid();
-  for (let r=0; r<R; r++)
-    for (let c=0; c<C; c++)
-      inputs[r][c].value = roundNice(M[r][c]);
+  for (let r=0;r<R;r++) for (let c=0;c<C;c++) inputs[r][c].value = r4(M[r][c]);
   drawLabels();
 }
-
-function clearMatrix(){
-  for (let r=0; r<R; r++)
-    for (let c=0; c<C; c++)
-      inputs[r][c].value = 0;
-  drawLabels();
-}
-
-function randomMatrix(){
-  for (let r=0; r<R; r++)
-    for (let c=0; c<C; c++)
-      inputs[r][c].value = roundNice((Math.random()*6 - 3) | 0); // small ints
+function clearM(){ for (let r=0;r<R;r++) for (let c=0;c<C;c++) inputs[r][c].value=0; drawLabels(); }
+function randomM(){
+  for (let r=0;r<R;r++) for (let c=0;c<C;c++) inputs[r][c].value = ((Math.random()*7)|0)-3;
   drawLabels();
 }
 
 /* ===========================
-   Row Operations
+   Row & Column Ops
    =========================== */
-function swapRows(M, i, j){
-  if (i===j) return;
-  const tmp = M[i]; M[i] = M[j]; M[j] = tmp;
-  addLog(`Swap R${i+1} ↔ R${j+1}`);
-}
-
-function scaleRow(M, i, k){
-  if (nearZero(k)) { addLog(`<span style="color:#ff9">Warning:</span> scaling by 0 ignored.`); return; }
-  for (let c=0; c<C; c++) M[i][c] = roundNice(M[i][c]*k);
-  addLog(`R${i+1} ← ${k}·R${i+1}`);
-}
-
-function addMultiple(M, dest, src, k){
-  for (let c=0; c<C; c++) M[dest][c] = roundNice(M[dest][c] + k*M[src][c]);
-  addLog(`R${dest+1} ← R${dest+1} + (${k})·R${src+1}`);
-}
-
-function writeBack(M){
-  for (let r=0; r<R; r++)
-    for (let c=0; c<C; c++)
-      inputs[r][c].value = roundNice(M[r][c]);
-  drawLabels();
-}
+function swapRows(M,i,j){ if(i===j)return; const t=M[i]; M[i]=M[j]; M[j]=t; log(`Swap R${i+1} ↔ R${j+1}`); }
+function swapCols(M,i,j){ if(i===j)return; for(let r=0;r<R;r++){ const t=M[r][i]; M[r][i]=M[r][j]; M[r][j]=t; } log(`Swap C${i+1} ↔ C${j+1}`); }
+function scaleRow(M,i,k){ if(nearZero(k)){ log('<span style="color:#ffd07a">Warning</span>: scale by 0 ignored'); return; } for(let c=0;c<C;c++) M[i][c]=r4(M[i][c]*k); log(`R${i+1} ← ${k}·R${i+1}`); }
+function scaleCol(M,j,k){ if(nearZero(k)){ log('<span style="color:#ffd07a">Warning</span>: scale by 0 ignored'); return; } for(let r=0;r<R;r++) M[r][j]=r4(M[r][j]*k); log(`C${j+1} ← ${k}·C${j+1}`); }
+function addRow(M,dest,src,k){ for(let c=0;c<C;c++) M[dest][c]=r4(M[dest][c]+k*M[src][c]); log(`R${dest+1} ← R${dest+1} + (${k})·R${src+1}`); }
+function addCol(M,dest,src,k){ for(let r=0;r<R;r++) M[r][dest]=r4(M[r][dest]+k*M[r][src]); log(`C${dest+1} ← C${dest+1} + (${k})·C${src+1}`); }
+function writeBack(M){ for(let r=0;r<R;r++) for(let c=0;c<C;c++) inputs[r][c].value=r4(M[r][c]); drawLabels(); }
 
 /* ===========================
-   Echelon Checker
+   Rank & Normal Form Check
    =========================== */
-function leadingIndex(row){
-  for (let c=0; c<C; c++){
-    if (!nearZero(row[c])) return c;
+function rank(M){
+  // basic row echelon based rank (no column ops needed just to count)
+  M = M.map(row=>row.slice());
+  let r=0, lead=0;
+  for (let i=0;i<R;i++){
+    if (lead>=C) return r;
+    let j=i;
+    while (j<R && nearZero(M[j][lead])) j++;
+    if (j===R){ lead++; i--; continue; }
+    const tmp=M[i]; M[i]=M[j]; M[j]=tmp;
+    const div = M[i][lead]; for (let k=0;k<C;k++) M[i][k]/=div;
+    for (let u=0;u<R;u++) if (u!==i){ const m=M[u][lead]; for(let k=0;k<C;k++) M[u][k]-=m*M[i][k]; }
+    r++; lead++;
   }
-  return null; // all zeros
-}
-
-function isRowEchelon(M){
-  let lastLead = -1;
-  let zeroZoneStarted = false;
-  for (let r=0; r<R; r++){
-    const lead = leadingIndex(M[r]);
-    if (lead === null){
-      // this is a zero row; all following rows must be zero
-      zeroZoneStarted = true;
-    }else{
-      if (zeroZoneStarted) return {ok:false, reason:`Nonzero row found below a zero row at R${r+1}.`};
-      if (lead <= lastLead) return {ok:false, reason:`Pivot in R${r+1} is not to the right of the pivot above.`};
-      // check below pivot are zero
-      for (let rr=r+1; rr<R; rr++){
-        if (!nearZero(M[rr][lead])) return {ok:false, reason:`Entry below pivot at (R${r+1}, C${lead+1}) is not zero.`};
-      }
-      lastLead = lead;
-    }
-  }
-  return {ok:true, reason:'Matrix is in row echelon form.'};
-}
-
-function rankOf(M){
-  let r=0;
-  for (let i=0; i<R; i++) if (leadingIndex(M[i]) !== null) r++;
   return r;
 }
 
+function isNormalForm(M){
+  const r = rank(M);
+  // top-left r×r should be identity, everything else 0
+  for (let i=0;i<Math.min(r,R);i++){
+    for (let j=0;j<Math.min(r,C);j++){
+      if (i===j && !nearZero(M[i][j]-1)) return false;
+      if (i!==j && !nearZero(M[i][j])) return false;
+    }
+  }
+  for (let i=0;i<R;i++){
+    for (let j=0;j<C;j++){
+      if (i<r && j<r) continue;
+      if (!nearZero(M[i][j])) return false;
+    }
+  }
+  return true;
+}
+
 /* ===========================
-   Auto Gaussian Elimination (stepwise)
+   Auto Normal Form (stepwise)
    =========================== */
-function nextAutoStep(){
-  const M = getMatrix();
-  if (!currentStep){
-    currentStep = {row:0, col:0, stage:'seekPivot', elimRow:null};
-    addLog('<b>Start elimination</b>');
+function nextStep(){
+  let M = getM();
+  if (!stepState){
+    stepState = {k:0, stage:'findPivot', searchR:0, searchC:0, elimR:0, elimC:0};
+    log('<b>Start normal-form reduction</b>');
   }
-  let {row, col, stage, elimRow} = currentStep;
+  let {k, stage} = stepState;
 
-  // advance col until we find a usable column or finish
-  function advanceToUsableColumn(){
-    while (col < C){
-      // If all rows from 'row' downward are zero in this column, move right
-      let nz = -1;
-      for (let r=row; r<R; r++){
-        if (!nearZero(M[r][col])) { nz = r; break; }
+  // done if k beyond limits or everything zero in submatrix
+  if (k>=R || k>=C){
+    narr('No more steps. Reached boundary of submatrix.');
+    log('<b>Reduction complete</b>');
+    stepState=null; drawLabels({focusK:null}); return;
+  }
+
+  // Helper: find nonzero in submatrix (r>=k, c>=k)
+  function findNonzero(){
+    for (let i=k;i<R;i++){
+      for (let j=k;j<C;j++){
+        if (NZ(M[i][j])) return {i,j};
       }
-      if (nz === -1){ col++; continue; }
-      return true;
     }
-    return false;
+    return null;
   }
 
-  // If row beyond R, we're done
-  if (row >= R || col >= C){
-    setNarr('No more steps — reached the end of elimination.');
-    addLog('<b>Elimination complete (echelon stage)</b>');
-    currentStep = null;
-    drawLabels({focusCol:null});
-    return;
+  if (stage==='findPivot'){
+    const p = findNonzero();
+    if (!p){
+      narr(`No nonzero entries in submatrix from (R${k+1},C${k+1}). Rank r = ${k}.`);
+      log(`<b>No more pivots</b>; rank = ${k}`);
+      stepState=null; drawLabels({focusK:null}); return;
+    }
+    if (p.i!==k){ swapRows(M,p.i,k); writeBack(M); narr(`Bring a nonzero entry into position (R${k+1}, C${k+1}) by swapping rows.`); drawLabels({focusK:k}); return; }
+    if (p.j!==k){ swapCols(M,p.j,k); writeBack(M); narr(`Bring that nonzero into column C${k+1} by swapping columns.`); drawLabels({focusK:k}); return; }
+    // now (k,k) nonzero
+    stepState.stage='make1';
+    narr(`Pivot located at (R${k+1},C${k+1}). Next: scale so pivot becomes 1.`);
+    drawLabels({focusK:k}); return;
   }
 
-  // Stage machine
-  if (stage === 'seekPivot'){
-    if (!advanceToUsableColumn()){
-      setNarr('No more usable columns. Done.');
-      addLog('<b>Elimination complete</b>');
-      currentStep = null;
-      drawLabels({focusCol:null});
-      return;
-    }
-    // find pivot row
-    let pivotRow = -1, maxAbs = 0;
-    for (let r=row; r<R; r++){
-      const val = Math.abs(M[r][col]);
-      if (val > maxAbs){ maxAbs = val; pivotRow = r; }
-    }
-    if (pivotRow !== row){
-      swapRows(M, row, pivotRow);
-      setNarr(`Swap to bring a nonzero entry into pivot position at (R${row+1}, C${col+1}).`);
-      writeBack(M);
-      currentStep = {row, col, stage:'scalePivot', elimRow:null};
-      drawLabels({focusCol:col});
-      return;
-    }else{
-      setNarr(`Found pivot candidate at (R${row+1}, C${col+1}).`);
-      currentStep = {row, col, stage:'scalePivot', elimRow:null};
-      drawLabels({focusCol:col});
-      return;
-    }
+  if (stage==='make1'){
+    const a = M[k][k];
+    if (!nearZero(a) && Math.abs(a-1)>1e-9){
+      // choose row scaling (or col) — either is fine; use row here for simplicity
+      scaleRow(M,k, r4(1/a)); writeBack(M);
+      narr(`Scaled R${k+1} so that pivot a₍${k+1},${k+1}₎ = 1.`);
+      drawLabels({focusK:k}); stepState.stage='zeroCol'; stepState.elimR=k+1; return;
+    } else { stepState.stage='zeroCol'; stepState.elimR=k+1; }
   }
 
-  if (stage === 'scalePivot'){
-    const a = M[row][col];
-    if (!nearZero(a) && a !== 1){
-      const k = roundNice(1/a);
-      scaleRow(M, row, k);
-      setNarr(`Scale R${row+1} so the pivot becomes 1.`);
-      writeBack(M);
-      currentStep = {row, col, stage:'elimBelow', elimRow:row+1};
-      drawLabels({focusCol:col});
-      return;
-    }else{
-      currentStep = {row, col, stage:'elimBelow', elimRow:row+1};
-    }
+  if (stage==='zeroCol'){
+    // zero every entry in column k except row k
+    while (stepState.elimR<R && nearZero(M[stepState.elimR][k])) stepState.elimR++;
+    if (stepState.elimR>=R){ stepState.stage='zeroRow'; stepState.elimC=0; narr(`Column C${k+1} below/above pivot cleared. Now clear row entries left/right of pivot.`); writeBack(M); drawLabels({focusK:k}); return; }
+    const r2 = stepState.elimR;
+    const factor = r4(- M[r2][k] / (nearZero(M[k][k])?1:M[k][k]));
+    addRow(M, r2, k, factor); writeBack(M);
+    narr(`Zero column entry at (R${r2+1},C${k+1}) by R${r2+1} ← R${r2+1} + (${factor})·R${k+1}.`);
+    stepState.elimR++; drawLabels({focusK:k}); return;
   }
 
-  if (stage === 'elimBelow'){
-    // eliminate entries below pivot in column 'col'
-    while (currentStep.elimRow < R && nearZero(M[currentStep.elimRow][col])){
-      currentStep.elimRow++;
-    }
-    if (currentStep.elimRow >= R){
-      // move to next pivot row/col
-      currentStep = {row: row+1, col: col+1, stage:'seekPivot', elimRow:null};
-      setNarr('Column cleared below pivot. Move to next pivot to the right and down.');
-      writeBack(M);
-      drawLabels({focusCol:col+1});
-      return;
-    }else{
-      const r2 = currentStep.elimRow;
-      const k = roundNice(- M[r2][col] / (nearZero(M[row][col]) ? 1 : M[row][col]));
-      addMultiple(M, r2, row, k);
-      setNarr(`Zero entry at (R${r2+1}, C${col+1}) by R${r2+1} ← R${r2+1} + (${k})·R${row+1}.`);
-      writeBack(M);
-      currentStep.elimRow++;
-      drawLabels({focusCol:col});
+  if (stage==='zeroRow'){
+    // zero every entry in row k except column k (both left and right)
+    while (stepState.elimC<C && (stepState.elimC===k || nearZero(M[k][stepState.elimC]))) stepState.elimC++;
+    if (stepState.elimC>=C){
+      // pivot fully isolated; advance k
+      narr(`Row R${k+1} cleared except pivot. Identity block grew by 1.`);
+      writeBack(M); drawLabels({focusK:k+1});
+      stepState = {k:k+1, stage:'findPivot', searchR:0, searchC:0, elimR:0, elimC:0};
       return;
     }
+    const c2 = stepState.elimC;
+    const factor = r4(- M[k][c2] / (nearZero(M[k][k])?1:M[k][k]));
+    addCol(M, c2, k, factor); writeBack(M);
+    narr(`Zero row entry at (R${k+1},C${c2+1}) by C${c2+1} ← C${c2+1} + (${factor})·C${k+1}.`);
+    stepState.elimC++; drawLabels({focusK:k}); return;
   }
 }
 
-function finishToEchelon(){
-  let guard = 0;
-  while (guard++ < 500){
-    const before = JSON.stringify(getMatrix());
-    nextAutoStep();
-    const after = JSON.stringify(getMatrix());
-    if (before === after) break;
-    if (!currentStep) break;
-  }
-}
-
-function reduceToRREF(){
-  // First finish echelon
-  finishToEchelon();
-  const M = getMatrix();
-
-  // back substitution to clear above pivots + normalize
-  // Find pivot positions
-  const pivots = [];
-  for (let r=0; r<R; r++){
-    const lead = leadingIndex(M[r]);
-    if (lead !== null) pivots.push({r, c: lead});
-  }
-  // Normalize pivots to 1
-  for (const {r,c} of pivots){
-    if (!nearZero(M[r][c]) && M[r][c] !== 1){
-      const k = roundNice(1 / M[r][c]);
-      scaleRow(M, r, k);
-    }
-  }
-  // Clear above
-  for (let i=pivots.length-1; i>=0; i--){
-    const {r, c} = pivots[i];
-    for (let rr=0; rr<r; rr++){
-      if (!nearZero(M[rr][c])){
-        const k = roundNice(- M[rr][c] / (nearZero(M[r][c])?1:M[r][c]));
-        addMultiple(M, rr, r, k);
-      }
-    }
-  }
-  writeBack(M);
-  setNarr('Reduced Row Echelon Form completed: pivots are 1 and the only nonzero in their columns.');
+function finish(){
+  let guard=0;
+  while(guard++<1500 && stepState!==null){ const before=JSON.stringify(getM()); nextStep(); const after=JSON.stringify(getM()); if (before===after) break; }
 }
 
 /* ===========================
-   Labels & Staircase Overlay
+   Labels & Identity Block Overlay
    =========================== */
 function drawLabels(opts={}){
-  const focusCol = (opts && typeof opts.focusCol === 'number') ? opts.focusCol : null;
+  const focusK = (typeof opts.focusK==='number') ? opts.focusK : null;
+  document.querySelectorAll('.pivotMark,.zeroMark,.idMark').forEach(e=>e.remove());
+  const stair = document.getElementById('stair'); stair.innerHTML='';
 
-  // Remove old labels and staircase
-  document.querySelectorAll('.pivotMark,.zeroMark').forEach(el => el.remove());
-  const stair = document.getElementById('stair');
-  stair.innerHTML = '';
+  const M = getM();
+  const r = rank(M);
+  document.getElementById('rank').innerHTML = r;
+  document.getElementById('idSize').innerHTML = `I<sub>${r}</sub>`;
+  document.getElementById('nf').innerHTML = isNormalForm(M) ? 'Yes ✅' : 'No';
 
-  const M = getMatrix();
-  // Leading indices
-  const leads = [];
-  for (let r=0; r<R; r++) leads.push(leadingIndex(M[r]));
+  // Identity block overlay (top-left r×r)
+  if (r>0){
+    const inputRect = inputs[0][0].getBoundingClientRect();
+    const lastRect = inputs[Math.min(r-1,R-1)][Math.min(r-1,C-1)].getBoundingClientRect();
+    const hostRect = stair.getBoundingClientRect();
+    const box = document.createElement('div'); box.className='idBlock';
+    box.style.left = (inputRect.left - hostRect.left - 6)+'px';
+    box.style.top = (inputRect.top - hostRect.top - 6)+'px';
+    box.style.width = (lastRect.right - inputRect.left + 12)+'px';
+    box.style.height = (lastRect.bottom - inputRect.top + 12)+'px';
+    stair.appendChild(box);
+  }
 
-  // Add pivot and zero-below marks
-  for (let r=0; r<R; r++){
-    const li = leads[r];
-    for (let c=0; c<C; c++){
-      const cell = inputs[r][c].parentElement;
-      // focus column subtle glow
-      if (c === focusCol) {
-        cell.querySelector('input').style.boxShadow = '0 0 0 2px #e4ff8030';
-        cell.querySelector('input').style.borderColor = '#98a83f';
-      } else {
-        cell.querySelector('input').style.boxShadow = 'none';
-        cell.querySelector('input').style.borderColor = '#2b3152';
-      }
-    }
-    if (li !== null){
-      const cell = inputs[r][li].parentElement;
-      const pm = document.createElement('div');
-      pm.className = 'pivotMark';
-      pm.textContent = 'pivot';
-      cell.appendChild(pm);
+  // Mark pivots (diagonal 1s within current identity zone if any)
+  for (let i=0;i<Math.min(r,R,C);i++){
+    if (!nearZero(M[i][i]-1)) continue;
+    const cell = inputs[i][i].parentElement;
+    const pm = document.createElement('div'); pm.className='pivotMark'; pm.textContent='pivot';
+    cell.appendChild(pm);
+  }
 
-      // below zeros
-      for (let rr=r+1; rr<R; rr++){
-        const zcell = inputs[rr][li].parentElement;
-        if (!nearZero(M[rr][li])){
-          const zm = document.createElement('div'); zm.className='zeroMark'; zm.textContent='make 0'; zcell.appendChild(zm);
+  // Zero-required hints: everything outside r×r should be 0 in target
+  for (let i=0;i<R;i++){
+    for (let j=0;j<C;j++){
+      if (i<r && j<r){
+        // identity cell; small mark if non-ideal
+        if ( (i===j && Math.abs(M[i][j]-1)>1e-9) || (i!==j && NZ(M[i][j])) ){
+          const mark = document.createElement('div'); mark.className='idMark'; mark.textContent='id';
+          inputs[i][j].parentElement.appendChild(mark);
+        }
+      }else{
+        if (NZ(M[i][j])){
+          const zm = document.createElement('div'); zm.className='zeroMark'; zm.textContent='→0';
+          inputs[i][j].parentElement.appendChild(zm);
         }
       }
+      // focus styling on row/col of current k
+      const inputEl = inputs[i][j];
+      if (focusK!==null && (i===focusK || j===focusK)){
+        inputEl.style.boxShadow='0 0 0 2px #e8ff7d2e';
+        inputEl.style.borderColor='#a1ad3a';
+      } else {
+        inputEl.style.boxShadow='none';
+        inputEl.style.borderColor='#2b3356';
+      }
     }
   }
-
-  // Draw staircase guide from pivot positions
-  let rr = 0, cc = 0;
-  while (rr<R && cc<C){
-    // find next pivot row index >= rr where lead == cc
-    let found = -1;
-    for (let r=rr; r<R; r++){
-      if (leads[r] === cc){ found = r; break; }
-    }
-    // Draw an L-corner at (found, cc) if found
-    if (found !== -1){
-      const x = cc, y = found;
-      const cellRect = inputs[y][x].getBoundingClientRect();
-      const hostRect = stair.getBoundingClientRect();
-
-      const corner = document.createElement('div');
-      corner.className = 'step';
-      // align roughly along grid cell boundaries; 92 is approx cell+gap space; but compute via DOM
-      const inputEl = inputs[y][x];
-      const rct = inputEl.getBoundingClientRect();
-      const top = rct.top - hostRect.top;
-      const left = rct.left - hostRect.left;
-      corner.style.top = (top - 6)+'px';
-      corner.style.left = (left - 6)+'px';
-      corner.style.width = (rct.width + 12)+'px';
-      corner.style.height = (rct.height + 12)+'px';
-      stair.appendChild(corner);
-
-      rr = found + 1; cc = cc + 1;
-    } else {
-      cc++;
-    }
-  }
-
-  // Update quick checks
-  const res = isRowEchelon(M);
-  const status = document.getElementById('status');
-  status.textContent = res.ok ? 'Yes — Echelon ✅' : 'Not yet';
-  status.className = 'status ' + (res.ok ? 'ok' : 'no');
-  document.getElementById('rank').textContent = rankOf(M);
-  // zero rows bottom
-  let zerosBottom = true, zeroSeen = false;
-  for (let r=0; r<R; r++){
-    const isZero = (leadingIndex(M[r]) === null);
-    if (isZero) zeroSeen = true;
-    else if (zeroSeen) zerosBottom = false;
-  }
-  document.getElementById('zerosOk').textContent = zerosBottom ? 'Yes' : 'No';
-  // staircase OK (strictly increasing leads)
-  let stairOK = true, last = -1;
-  for (let r=0; r<R; r++){
-    const li = leadingIndex(M[r]);
-    if (li !== null){
-      if (li <= last) stairOK = false;
-      last = li;
-    } else if (r < R-1){
-      // ensure nothing after breaks
-      // handled above by zerosBottom
-    }
-  }
-  document.getElementById('stairOk').textContent = stairOK ? 'Yes' : 'No';
 }
 
 /* ===========================
-   UI Helpers
+   UI helpers
    =========================== */
-function setNarr(html){ narrEl.innerHTML = html; }
-function addLog(html){
-  logEl.insertAdjacentHTML('beforeend', `<div>• ${html}</div>`);
-  logEl.scrollTop = logEl.scrollHeight;
-}
-function clearLog(){ logEl.innerHTML = ''; }
+function narr(html){ narrEl.innerHTML = html; }
+function log(html){ logEl.insertAdjacentHTML('beforeend', `<div>• ${html}</div>`); logEl.scrollTop = logEl.scrollHeight; }
+function clearLog(){ logEl.innerHTML=''; }
 
-function refreshRowSelectors(){
-  const opts = Array.from({length:R}, (_,i)=> `<option value="${i}">${i+1}</option>`).join('');
-  ['swapA','swapB','scaleRow','addDest','addSrc','addSrcTail'].forEach(id=>{
-    const el = document.getElementById(id);
-    el.innerHTML = opts;
-  });
+function refreshSelectors(){
+  const rOpts = Array.from({length:R},(_,i)=>`<option value="${i}">${i+1}</option>`).join('');
+  const cOpts = Array.from({length:C},(_,i)=>`<option value="${i}">${i+1}</option>`).join('');
+  ['rSwapA','rSwapB','rScaleRow','rAddDest','rAddDest2','rAddSrc'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=rOpts; });
+  ['cSwapA','cSwapB','cScaleCol','cAddDest','cAddDest2','cAddSrc'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=cOpts; });
 }
 
 /* ===========================
    Presets
    =========================== */
 function presetA(){
-  setMatrix([
-    [1, 2, 1],
-    [2, 3, 4],
-    [-1, 0, 2],
+  // rank 2, needs both row & col work to isolate 2×2 identity
+  setM([
+    [0, 2, 4, 6],
+    [1, 1, 0, 3],
+    [2, 2, 0, 6],
   ]);
-  setNarr('Preset A loaded. Try <b>Next Step</b> to see pivoting and elimination.');
+  narr('Preset A loaded (expect rank 2). Try Next Step to watch row+col pivoting.');
 }
 function presetB(){
-  setMatrix([
-    [0, 2, 4, 6],
-    [0, 0, 5, 7],
-    [3, 1, 2, 9],
+  // rectangular with rank 3
+  setM([
+    [1, 2, 1, 0, 3],
+    [2, 4, 2, 1, 7],
+    [0, 1, 1, 1, 2],
   ]);
-  setNarr('Preset B loaded (needs a top-row swap first). Step through to see partial pivoting.');
+  narr('Preset B loaded (expect rank 3). Step through to form diag(I3,0).');
 }
 
 /* ===========================
-   Wire up UI
+   Wire-up
    =========================== */
 window.addEventListener('DOMContentLoaded', ()=>{
   logEl = document.getElementById('log');
@@ -715,47 +523,60 @@ window.addEventListener('DOMContentLoaded', ()=>{
 
   document.getElementById('resize').addEventListener('click', ()=>{
     const r = Math.max(1, Math.min(7, parseInt(document.getElementById('rows').value||'3')));
-    const c = Math.max(1, Math.min(7, parseInt(document.getElementById('cols').value||'3')));
-    R = r; C = c; createGrid();
+    const c = Math.max(1, Math.min(7, parseInt(document.getElementById('cols').value||'4')));
+    R=r; C=c; createGrid();
   });
-
-  document.getElementById('random').addEventListener('click', ()=>{ randomMatrix(); setNarr('Random matrix generated.') });
-  document.getElementById('reset').addEventListener('click', ()=>{ clearMatrix(); setNarr('Matrix cleared. Enter your own values.'); drawLabels(); });
+  document.getElementById('random').addEventListener('click', ()=>{ randomM(); narr('Random matrix generated.'); });
+  document.getElementById('reset').addEventListener('click', ()=>{ clearM(); narr('Matrix cleared. Enter your own values.'); });
   document.getElementById('presetA').addEventListener('click', presetA);
   document.getElementById('presetB').addEventListener('click', presetB);
 
-  document.getElementById('next').addEventListener('click', nextAutoStep);
-  document.getElementById('finish').addEventListener('click', finishToEchelon);
-  document.getElementById('rref').addEventListener('click', reduceToRREF);
-
-  document.getElementById('checkBtn').addEventListener('click', ()=>{
-    const res = isRowEchelon(getMatrix());
-    setNarr(res.ok ? '✅ This matrix is in row echelon form.' : '❌ Not in echelon. ' + res.reason);
+  document.getElementById('next').addEventListener('click', nextStep);
+  document.getElementById('finish').addEventListener('click', finish);
+  document.getElementById('check').addEventListener('click', ()=>{
+    const ok = isNormalForm(getM());
+    narr(ok ? '✅ Matrix is in Normal Form: N = diag(I_r, 0).' : '❌ Not in Normal Form yet. Continue isolating pivots and zeroing outside the identity block.');
     drawLabels();
   });
 
-  // Manual ops
-  document.getElementById('swapBtn').addEventListener('click', ()=>{
-    const a = parseInt(document.getElementById('swapA').value);
-    const b = parseInt(document.getElementById('swapB').value);
-    const M = getMatrix(); swapRows(M, a, b); writeBack(M); setNarr(`Swapped rows R${a+1} and R${b+1}.`);
+  // Manual ops: rows
+  document.getElementById('rSwapBtn').addEventListener('click', ()=>{
+    const a=parseInt(document.getElementById('rSwapA').value);
+    const b=parseInt(document.getElementById('rSwapB').value);
+    const M=getM(); swapRows(M,a,b); writeBack(M); narr(`Swapped rows R${a+1} and R${b+1}.`);
+  });
+  document.getElementById('rScaleBtn').addEventListener('click', ()=>{
+    const i=parseInt(document.getElementById('rScaleRow').value);
+    const k=parseFloat(document.getElementById('rScaleK').value||'1');
+    const M=getM(); scaleRow(M,i,k); writeBack(M); narr(`Scaled R${i+1} by ${k}.`);
+  });
+  document.getElementById('rAddBtn').addEventListener('click', ()=>{
+    const d=parseInt(document.getElementById('rAddDest').value);
+    const d2=parseInt(document.getElementById('rAddDest2').value);
+    const s=parseInt(document.getElementById('rAddSrc').value);
+    const k=parseFloat(document.getElementById('rAddK').value||'0');
+    const dest = d; // UI uses both d and d2 for clarity; we keep dest=d
+    const M=getM(); addRow(M,dest,s,k); writeBack(M); narr(`R${dest+1} ← R${dest+1} + (${k})·R${s+1}.`);
   });
 
-  document.getElementById('scaleBtn').addEventListener('click', ()=>{
-    const r = parseInt(document.getElementById('scaleRow').value);
-    const k = parseFloat(document.getElementById('scaleK').value || '1');
-    const M = getMatrix(); scaleRow(M, r, k); writeBack(M); setNarr(`Scaled R${r+1} by ${k}.`);
+  // Manual ops: columns
+  document.getElementById('cSwapBtn').addEventListener('click', ()=>{
+    const a=parseInt(document.getElementById('cSwapA').value);
+    const b=parseInt(document.getElementById('cSwapB').value);
+    const M=getM(); swapCols(M,a,b); writeBack(M); narr(`Swapped columns C${a+1} and C${b+1}.`);
   });
-
-  document.getElementById('addBtn').addEventListener('click', ()=>{
-    const dest = parseInt(document.getElementById('addDest').value);
-    const src  = parseInt(document.getElementById('addSrc').value);
-    const src2 = parseInt(document.getElementById('addSrcTail').value);
-    if (src !== src2){
-      // keep UI consistent: two dropdowns must match; if not, use the second as the src
-    }
-    const k = parseFloat(document.getElementById('addK').value || '0');
-    const M = getMatrix(); addMultiple(M, dest, src2, k); writeBack(M); setNarr(`Added ${k}·R${src2+1} to R${dest+1}.`);
+  document.getElementById('cScaleBtn').addEventListener('click', ()=>{
+    const j=parseInt(document.getElementById('cScaleCol').value);
+    const k=parseFloat(document.getElementById('cScaleK').value||'1');
+    const M=getM(); scaleCol(M,j,k); writeBack(M); narr(`Scaled C${j+1} by ${k}.`);
+  });
+  document.getElementById('cAddBtn').addEventListener('click', ()=>{
+    const d=parseInt(document.getElementById('cAddDest').value);
+    const d2=parseInt(document.getElementById('cAddDest2').value);
+    const s=parseInt(document.getElementById('cAddSrc').value);
+    const k=parseFloat(document.getElementById('cAddK').value||'0');
+    const dest = d;
+    const M=getM(); addCol(M,dest,s,k); writeBack(M); narr(`C${dest+1} ← C${dest+1} + (${k})·C${s+1}.`);
   });
 
   createGrid();
@@ -763,4 +584,3 @@ window.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-```

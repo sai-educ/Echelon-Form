@@ -1,3 +1,6 @@
+Absolutely—here’s the updated single-file HTML. I kept the tool exactly as before and added a top-right “How to Use” menu with step-by-step instructions and **Learning Goals** in both **English** and **తెలుగు** (Telugu). Just save as, e.g., `normal-form-lab.html` and open in your browser or host on GitHub Pages.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,12 +12,42 @@
     --bg:#0e1220; --panel:#151a2e; --ink:#eaf0ff; --muted:#b7bee2;
     --accent:#7fd4ff; --ok:#3ad59a; --warn:#ffd074; --danger:#ff8aa5;
     --grid:#232744; --pivot:#22d39a; --focus:#e8ff7d; --zero:#6fb3ff; --id:#9fffa8;
+    --overlay:#00000090;
   }
   html,body{height:100%}
   body{
     margin:0; font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans";
     color:var(--ink); background: radial-gradient(1200px 700px at 15% -10%, #1a2142 0%, #0e1220 60%) fixed;
   }
+
+  /* ---------- Top-right HOW-TO menu ---------- */
+  .howto-anchor{position:fixed; top:12px; right:16px; z-index:1001}
+  .howto-btn{
+    background:#1d2340; border:1px solid #3a4470; color:var(--ink);
+    border-radius:999px; padding:10px 14px; font-size:14px; cursor:pointer;
+  }
+  .howto-btn:hover{border-color:#4a5790}
+  .backdrop{position:fixed; inset:0; background:var(--overlay); display:none; z-index:1000}
+  .backdrop.open{display:block}
+  .howto-panel{
+    position:fixed; top:56px; right:16px; width:420px; max-width:95vw;
+    background:linear-gradient(180deg,#161b32 0%,#13182b 100%);
+    border:1px solid #242946; border-radius:16px; padding:14px;
+    box-shadow:0 18px 40px #00000070; z-index:1002; display:none;
+  }
+  .howto-panel.open{display:block}
+  .howto-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px}
+  .howto-title{font-size:16px; font-weight:700}
+  .close-btn{background:#171b30; border:1px solid #2b345c; color:var(--ink); border-radius:10px; padding:8px 10px; cursor:pointer}
+  .close-btn:hover{border-color:#3e4872}
+  .lang-tabs{display:flex; gap:6px; margin:6px 0 10px}
+  .tab{background:#121735; border:1px solid #2a3256; color:var(--muted); padding:6px 10px; border-radius:999px; cursor:pointer; font-size:13px}
+  .tab[aria-selected="true"]{color:#101425; background:#9fd7ff; border-color:#9fd7ff; font-weight:700}
+  .howto-section{border:1px solid #262c48; background:#12182e; border-radius:10px; padding:10px; margin-top:8px}
+  .howto-section h3{margin:0 0 6px; font-size:15px}
+  .howto-section ol{margin:.35em 0 .2em 1.2em} .howto-section li{margin:.25em 0}
+  .muted{color:var(--muted)}
+
   header{max-width:1200px; margin:0 auto; padding:26px 16px 8px}
   h1{margin:0 0 6px; font-size:clamp(22px,3.2vw,34px)}
   .sub{color:var(--muted); max-width:980px}
@@ -25,7 +58,6 @@
   h2{margin:0 0 8px; font-size:18px}
   .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
   .spacer{height:8px}
-  .muted{color:var(--muted)}
   .badge{display:inline-flex; gap:6px; align-items:center; font-size:12px; padding:4px 8px; border-radius:999px; background:#1a1f38; border:1px solid #2a3256}
   .tag{display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:3px 8px; border-radius:999px; border:1px dashed #2a2f47; background:#141a34}
   .dot{width:10px; height:10px; border-radius:50%}
@@ -82,6 +114,68 @@
 </style>
 </head>
 <body>
+  <!-- Top-right HOW-TO menu -->
+  <div class="howto-anchor">
+    <button id="howBtn" class="howto-btn" aria-haspopup="dialog" aria-controls="howPanel">❓ How to Use</button>
+  </div>
+  <div id="howBackdrop" class="backdrop" tabindex="-1" aria-hidden="true"></div>
+  <div id="howPanel" class="howto-panel" role="dialog" aria-modal="true" aria-labelledby="howTitle" aria-hidden="true">
+    <div class="howto-head">
+      <div id="howTitle" class="howto-title">How to Use • వాడుక మార్గదర్శకం</div>
+      <button id="howClose" class="close-btn" aria-label="Close">✕</button>
+    </div>
+    <div class="lang-tabs" role="tablist" aria-label="Language tabs">
+      <button id="tabEN" class="tab" role="tab" aria-selected="true" aria-controls="panelEN">English</button>
+      <button id="tabTE" class="tab" role="tab" aria-selected="false" aria-controls="panelTE">తెలుగు</button>
+    </div>
+
+    <!-- English panel -->
+    <section id="panelEN" class="howto-section" role="tabpanel" aria-labelledby="tabEN">
+      <h3>Learning Goals</h3>
+      <ul class="muted">
+        <li>Define Normal Form: <code>N = diag(I<sub>r</sub>, 0)</code> and identify <b>rank r</b>.</li>
+        <li>Compute rank using <b>row and column operations</b>.</li>
+        <li>Execute: pivot selection, scaling to 1, zeroing row/column, iterate k.</li>
+        <li>Interpret operations as <code>P·A·Q = N</code> with elementary matrices.</li>
+        <li>Connect rank to solvability and invertibility (square A invertible ⟺ r = n).</li>
+      </ul>
+      <h3 style="margin-top:8px">Step-by-Step</h3>
+      <ol>
+        <li><b>Set size</b>: choose <i>Rows</i> & <i>Cols</i> → click <b>Resize</b>.</li>
+        <li><b>Enter values</b> or use <b>Preset A/B</b> or <b>Randomize</b>.</li>
+        <li>Press <b>Next Step</b> to reduce to Normal Form: find a nonzero in the (k,k) submatrix, swap rows/cols to (k,k), scale so pivot=1, zero other entries in column k (row ops) and row k (column ops), then advance k.</li>
+        <li>Use <b>Finish to Normal Form</b> to complete automatically.</li>
+        <li>Practice with <b>Manual Row/Column Operations</b> (Swap, Scale, Add Multiple).</li>
+        <li>Click <b>Check Normal Form</b> anytime to verify the target shape.</li>
+        <li>Read the <b>KPIs</b>: Rank (r), Identity size, Normal Form status. Use <b>Narration</b> and <b>Operation Log</b> to follow the reasoning.</li>
+      </ol>
+      <p class="muted" style="margin-top:6px">Tip: Everything outside the top-left <code>I<sub>r</sub></code> must be 0 in Normal Form.</p>
+    </section>
+
+    <!-- Telugu panel -->
+    <section id="panelTE" class="howto-section" role="tabpanel" aria-labelledby="tabTE" hidden>
+      <h3>అభ్యాస లక్ష్యాలు (Learning Goals)</h3>
+      <ul class="muted">
+        <li><b>Normal Form</b> నిర్వచనం: <code>N = diag(I<sub>r</sub>, 0)</code> మరియు <b>rank r</b> గుర్తించడం.</li>
+        <li><b>వరుస & కాలమ్ ఆపరేషన్లతో</b> rank ని గణించడం.</li>
+        <li>దశలు: <i>pivot</i> ఎంపిక, 1కి <i>scale</i> చేయడం, అదే వరుస/కాలమ్ లోని ఇతర విలువలను 0 చేయడం, తరువాత kని పెంచడం.</li>
+        <li>ప్రతి చర్యను <code>P·A·Q = N</code> రూపంలో elementary matrices ద్వారా అర్థం చేసుకోవడం.</li>
+        <li>rank ని solvability మరియు invertibility (చతురస్ర A invertible ⟺ r = n) తో కలపడం.</li>
+      </ul>
+      <h3 style="margin-top:8px">దశలవారీ వాడుక</h3>
+      <ol>
+        <li><b>పరిమాణం</b> ఎంచుకోండి: <i>Rows</i>, <i>Cols</i> ఇవ్వండి → <b>Resize</b> నొక్కండి.</li>
+        <li><b>విలువలు నమోదు</b> చేయండి లేదా <b>Preset A/B</b>, <b>Randomize</b> వాడండి.</li>
+        <li><b>Next Step</b> నొక్కండి: (k,k) ఉపమాట్రిక్స్ లో నాన్జీరో అంశాన్ని వెతికి (k,k)కి రప్పించేందుకు వరుస/కాలమ్ <i>swap</i> చేయండి, pivot ని 1కి <i>scale</i> చేయండి, తరువాత kవ కాలమ్ లోని మిగతా ఎంట్రీలను (row operations తో) 0 చేయండి, kవ వరుసలోని ఎంట్రీలను (column operations తో) 0 చేయండి; తరువాత k ని పెంచండి.</li>
+        <li><b>Finish to Normal Form</b> నొక్కితే ఆటోమేటిక్ గా పూర్తవుతుంది.</li>
+        <li><b>Manual Row/Column Operations</b> (Swap, Scale, Add Multiple) తో సాధన చేయండి.</li>
+        <li>ఎప్పుడైనా <b>Check Normal Form</b> నొక్కి లక్ష్య ఆకారాన్ని తనిఖీ చేయండి.</li>
+        <li><b>KPIs</b> చూడండి: Rank (r), Identity size, Normal Form స్థితి. <b>Narration</b> & <b>Operation Log</b> ద్వారా చర్యల తర్కం అర్థం చేసుకోండి.</li>
+      </ol>
+      <p class="muted" style="margin-top:6px">సూచన: Normal Form లో <code>I<sub>r</sub></code> బ్లాక్ వెలుపల అన్నీ 0 అయి ఉండాలి.</p>
+    </section>
+  </div>
+
 <header>
   <h1>Normal Form of a Matrix — Interactive Rank Lab</h1>
   <p class="sub">
@@ -229,6 +323,37 @@ const EPS = 1e-10;
 const NZ = x => Math.abs(x) > EPS;
 const nearZero = x => Math.abs(x) < EPS;
 const r4 = x => nearZero(x) ? 0 : Math.round(x*10000)/10000;
+
+/* ===========================
+   HOW-TO menu behavior
+   =========================== */
+function openHowto(){
+  document.getElementById('howBackdrop').classList.add('open');
+  const p = document.getElementById('howPanel');
+  p.classList.add('open');
+  p.setAttribute('aria-hidden','false');
+  document.getElementById('howBtn').setAttribute('aria-expanded','true');
+  // focus first tab for accessibility
+  document.getElementById('tabEN').focus();
+}
+function closeHowto(){
+  document.getElementById('howBackdrop').classList.remove('open');
+  const p = document.getElementById('howPanel');
+  p.classList.remove('open');
+  p.setAttribute('aria-hidden','true');
+  document.getElementById('howBtn').setAttribute('aria-expanded','false');
+}
+function selectLang(tab){
+  const isEN = tab === 'EN';
+  const tabEN = document.getElementById('tabEN');
+  const tabTE = document.getElementById('tabTE');
+  const panelEN = document.getElementById('panelEN');
+  const panelTE = document.getElementById('panelTE');
+  tabEN.setAttribute('aria-selected', isEN ? 'true' : 'false');
+  tabTE.setAttribute('aria-selected', isEN ? 'false' : 'true');
+  panelEN.hidden = !isEN;
+  panelTE.hidden = isEN;
+}
 
 /* ===========================
    Model & DOM
@@ -384,7 +509,10 @@ function nextStep(){
   if (stage==='zeroCol'){
     // zero every entry in column k except row k
     while (stepState.elimR<R && nearZero(M[stepState.elimR][k])) stepState.elimR++;
-    if (stepState.elimR>=R){ stepState.stage='zeroRow'; stepState.elimC=0; narr(`Column C${k+1} below/above pivot cleared. Now clear row entries left/right of pivot.`); writeBack(M); drawLabels({focusK:k}); return; }
+    if (stepState.elimR>=R){
+      // now clear row
+      stepState.stage='zeroRow'; stepState.elimC=0; narr(`Column C${k+1} below/above pivot cleared. Now clear row entries left/right of pivot.`); writeBack(M); drawLabels({focusK:k}); return;
+    }
     const r2 = stepState.elimR;
     const factor = r4(- M[r2][k] / (nearZero(M[k][k])?1:M[k][k]));
     addRow(M, r2, k, factor); writeBack(M);
@@ -481,7 +609,8 @@ function drawLabels(opts={}){
 /* ===========================
    UI helpers
    =========================== */
-function narr(html){ narrEl.innerHTML = html; }
+function setNarr(html){ narrEl.innerHTML = html; }
+function narr(html){ setNarr(html); }
 function log(html){ logEl.insertAdjacentHTML('beforeend', `<div>• ${html}</div>`); logEl.scrollTop = logEl.scrollHeight; }
 function clearLog(){ logEl.innerHTML=''; }
 
@@ -521,6 +650,19 @@ window.addEventListener('DOMContentLoaded', ()=>{
   logEl = document.getElementById('log');
   narrEl = document.getElementById('narr');
 
+  // How-to menu
+  document.getElementById('howBtn').addEventListener('click', ()=>{
+    const panel = document.getElementById('howPanel');
+    const open = !panel.classList.contains('open');
+    if (open) openHowto(); else closeHowto();
+  });
+  document.getElementById('howClose').addEventListener('click', closeHowto);
+  document.getElementById('howBackdrop').addEventListener('click', closeHowto);
+  document.addEventListener('keydown', (e)=>{ if (e.key==='Escape') closeHowto(); });
+  document.getElementById('tabEN').addEventListener('click', ()=>selectLang('EN'));
+  document.getElementById('tabTE').addEventListener('click', ()=>selectLang('TE'));
+
+  // Core controls
   document.getElementById('resize').addEventListener('click', ()=>{
     const r = Math.max(1, Math.min(7, parseInt(document.getElementById('rows').value||'3')));
     const c = Math.max(1, Math.min(7, parseInt(document.getElementById('cols').value||'4')));
@@ -579,8 +721,10 @@ window.addEventListener('DOMContentLoaded', ()=>{
     const M=getM(); addCol(M,dest,s,k); writeBack(M); narr(`C${dest+1} ← C${dest+1} + (${k})·C${s+1}.`);
   });
 
+  // Init
   createGrid();
 });
 </script>
 </body>
 </html>
+```
